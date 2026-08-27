@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kundresa · Onboardingchecklista</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<!-- Länk till CSS-filen -->
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="brand">
+    <div class="mark">RB</div>
+    <div class="eyebrow">Onboarding · Ny kund</div>
+    <h1>Kundresan</h1>
+  </div>
+  <button id="client-btn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke-linecap="round"/><circle cx="12" cy="8" r="3.6"/></svg>
+    <span class="cb-text">
+      <span class="cb-cap">Kund</span>
+      <span class="cb-name" id="client-name-label">Ingen kund vald</span>
+    </span>
+    <span class="cb-chevron">Byt ›</span>
+  </button>
+  <nav id="tabs"></nav>
+  <div id="sidebar-footer">
+    <button id="reset-btn" type="button">Nollställ bockar för vald kund</button>
+    <div id="save-status">Sparas automatiskt i den här webbläsaren</div>
+  </div>
+</aside>
+
+<main id="main"></main>
+
+<!-- Länk till JavaScript-filen -->
+<script src="script.js"></script>
+</body>
+</html>
