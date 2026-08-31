@@ -1,396 +1,105 @@
-/* ============ CHECKLIST DATA ============ */
+/* ============ CHECKLIST DATA ============
+   Fas 1 och 2 har egna formulär. Fas 3–6 använder den befintliga
+   checklistmotorn, men med få huvudpunkter och villkorsstyrd visning. */
 const SECTIONS = [
   {
-    id:"kontakt", title:"Första kontakt",
-    syfte:"Skapa en tydlig bild av kundens verksamhet, behov och förväntningar samt bedöma om kunden passar byråns målgrupp och tjänsteutbud.",
-    groups:[{items:[
-      "Möte med kunden är bokat",
-      "Inledande behovsanalys är genomförd",
-      "Kundens verksamhet och affärsmodell är genomgången",
-      "Företagsform är identifierad",
-      "Bransch och verksamhetsområde är identifierade",
-      "Antal anställda är fastställt",
-      "Momsperiod är fastställd",
-      "Omsättning är fastställd",
-      "Internationell verksamhet har kartlagts",
-      "Eventuell tidigare redovisningsbyrå är identifierad",
-      "Kundens önskade tjänster är identifierade",
-      "Kundens behov och förväntningar är dokumenterade",
-      "Bedömning har gjorts av om kunden passar byråns målgrupp och förutsättningar",
-      "Offert har upprättats och skickats",
-      "Eventuell förhandling är genomförd",
-      "Offerten är godkänd av kunden"
-    ]}]
+    id:"kontakt", title:"Företagsprofil & uppdrag",
+    syfte:"Ringa in kunden, uppdragets omfattning och de uppgifter som ska styra resten av onboardingen.",
+    groups:[]
   },
   {
-    id:"kundkannedom", title:"Kundkännedom",
-    syfte:"Säkerställa att byrån vet vem kunden är, vem som kontrollerar företaget, vad verksamheten innebär och vilken risk affärsförbindelsen medför.",
+    id:"kundkannedom", title:"Kundkännedom & risk",
+    syfte:"Säkerställa tillräcklig kundkännedom, bedöma risk och avgöra om kunden kan accepteras.",
+    groups:[]
+  },
+  {
+    id:"avtal", title:"Avtal & arbetssätt",
+    syfte:"Bestämma hur uppdraget ska genomföras i praktiken och tydliggöra ansvar mellan kunden och byrån.",
     groups:[
-      {label:"A", title:"Identifiera kunden", items:[
-        "Företagsnamn och organisationsnummer kontrollerat mot tillförlitlig källa",
-        "Registrerad adress och företagsstatus kontrollerad",
-        "Företrädare identifierade och identitet verifierad",
-        "Firmateckning/behörighet kontrollerad",
-        "Eventuell fullmakt kontrollerad",
-        "Källa och datum för kontrollen dokumenterat"
+      {title:"Uppdrag och villkor", items:[
+        {id:"scope", text:"Uppdragets omfattning och gränsdragning är fastställd"},
+        {id:"commercial", text:"Pris och kommersiella villkor är fastställda"}
       ]},
-      {label:"B", title:"Verklig huvudman och ägarstruktur", items:[
-        "Verklig huvudman identifierad och verifierad",
-        "Ägar- och kontrollstruktur kontrollerad",
-        "Eventuella juridiska personer i ägarstrukturen utredda",
-        "Komplex eller svåröverskådlig ägarstruktur identifierad och utredd",
-        "Alternativ verklig huvudman dokumenterad om ordinarie inte kan identifieras",
-        "Källa och datum för kontrollen dokumenterat"
+      {title:"Ansvar och samarbete", items:[
+        {id:"responsibility", text:"Ansvarsfördelningen mellan kunden och byrån är fastställd"},
+        {id:"internal", text:"Ansvarig konsult, eventuell ersättare och behov av specialist är hanterade"},
+        {id:"communication", text:"Kontaktpersoner och kommunikationskanaler är fastställda"},
+        {id:"materialRoutine", text:"Rutin för inskickning av underlag och viktiga deadlines är överenskomna"},
+        {id:"approvalRoutine", text:"Attest- och godkännanderutiner är fastställda, om relevant"}
       ]},
-      {label:"C", title:"Förstå kunden och verksamheten", items:[
-        "Vad företaget säljer och hur det tjänar pengar är dokumenterat",
-        "Viktigaste kunder och leverantörer är dokumenterade",
-        "Var verksamheten bedrivs är dokumenterat",
-        "Eventuell internationell verksamhet är dokumenterad",
-        "Kontanthantering är dokumenterad",
-        "Förväntade större eller ovanliga transaktioner är dokumenterade",
-        "Vilka tjänster kunden vill köpa av byrån är dokumenterat",
-        "Varför kunden anlitar byrån är dokumenterat"
-      ]},
-      {label:"D", title:"PEP- och sanktionskontroll", items:[
-        "PEP-kontroll genomförd",
-        "Sanktionskontroll genomförd",
-        "Resultat av kontrollen dokumenterat (träff/ingen träff)",
-        "Eventuell träff utredd enligt process för skärpt kundkännedom",
-        "Källa och datum för kontrollen dokumenterat"
-      ]},
-      {label:"E", title:"Riskbedömning", items:[
-        "Bedömning av varningssignaler genomförd och dokumenterad",
-        "Sammanvägd risknivå fastställd (låg/normal/förhöjd)",
-        "Motivering till riskbedömningen dokumenterad"
-      ]},
-      {label:"F", title:"Åtgärd vid förhöjd risk", items:[
-        "Ytterligare information/underlag har inhämtats",
-        "Medlens eller förmögenhetens ursprung har utretts vid behov",
-        "Ärendet har eskalerats enligt byråns rutin",
-        "Beslut om fortsatt uppdrag eller avböjande fattat",
-        "Godkännande av behörig beslutsfattare inhämtat vid behov",
-        "Beslut och motivering dokumenterade"
-      ]},
-      {label:"G", title:"Beslut och uppföljning", items:[
-        "Kundkännedomen är komplett",
-        "Riskbedömningen är dokumenterad",
-        "Inga kvarstående hinder mot att anta kunden finns",
-        "Beslut om att anta kunden är fattat och dokumenterat",
-        "Beslutsfattare och datum dokumenterat",
-        "Nästa planerade uppföljning är bestämd och ansvarig utsedd"
+      {title:"Administration och avtal", items:[
+        {id:"customerCard", text:"Kundkortet är komplett"},
+        {id:"agreement", text:"Uppdragsavtal med relevanta villkor och bilagor är upprättat"},
+        {id:"agreementSigned", text:"Uppdragsavtalet är signerat och arkiverat"}
       ]}
     ]
   },
   {
-    id:"informationsinsamling", title:"Informationsinsamling",
-    syfte:"Samla in och verifiera den grundläggande information som krävs för att förstå kunden och säkerställa att företaget är korrekt registrerat.",
+    id:"overtag", title:"Övertag & ekonomiskt underlag",
+    syfte:"Säkerställa ett korrekt ekonomiskt utgångsläge och en tydlig övergång till den nya byrån.",
     groups:[
-      {title:"Grundläggande företagsinformation", items:[
-        "Organisationsnummer är registrerat och verifierat",
-        "Kontaktpersoner är registrerade",
-        "Företags- och besöksadresser är registrerade",
-        "Telefonnummer är registrerat",
-        "E-postadresser är registrerade",
-        "Faktureringsuppgifter är registrerade",
-        "Bankuppgifter är registrerade"
+      {title:"Övertag från tidigare byrå", items:[
+        {id:"previousContact", text:"Tidigare byrå är kontaktad och övertagandet är samordnat", visibleWhen:"previousFirm"},
+        {id:"previousIssues", text:"Eventuella problem, tvister, obetalda arvoden eller andra relevanta omständigheter är utredda", visibleWhen:"previousFirm"},
+        {id:"ongoingWork", text:"Pågående arbete, perioder och viktiga deadlines är kartlagda", visibleWhen:"previousFirm"},
+        {id:"previousAccess", text:"Tidigare behörigheter och fullmakter är identifierade och hanterade", visibleWhen:"previousFirm"}
       ]},
-      {title:"Verksamhet", items:[
-        "Verksamhetens art är dokumenterad",
-        "Verksamheten och affärsmodellen är beskrivna",
-        "Viktiga kunder är identifierade",
-        "Viktiga leverantörer är identifierade",
-        "Eventuella säsongsvariationer är kartlagda"
+      {title:"Räkenskapsinformation", items:[
+        {id:"bookkeepingData", text:"Bokföringsdata/SIE och nödvändiga bokföringsunderlag är mottagna", visibleWhen:"existing"},
+        {id:"annualMaterial", text:"Senaste bokslut/årsredovisning och relevanta deklarationer är mottagna", visibleWhen:"existing"},
+        {id:"registers", text:"Nödvändiga register och specifikationer är mottagna", visibleWhen:"existing"}
       ]},
-      {title:"Skatt och registreringar", items:[
-        "Momsregistrering och momsperiod är kontrollerad",
-        "Arbetsgivarregistrering är kontrollerad",
-        "F-skatt är kontrollerad",
-        "OSS-registrering är kontrollerad, om relevant",
-        "Import/exportverksamhet är identifierad, om relevant"
+      {title:"Ingående läge", items:[
+        {id:"openingBalances", text:"Ingående balanser och väsentliga poster är kontrollerade", visibleWhen:"existing"},
+        {id:"deviations", text:"Eventuella fel eller avvikelser är dokumenterade och hanterade", visibleWhen:"existing"}
       ]}
     ]
   },
   {
-    id:"uppdragsavtal", title:"Uppdragsavtal",
-    syfte:"Tydliggöra och dokumentera uppdragets omfattning, ansvar, villkor och förväntningar mellan redovisningsbyrån och kunden.",
+    id:"system", title:"Behörigheter, system & dokumentation",
+    syfte:"Göra kundens praktiska arbetsmiljö redo för löpande arbete och bara visa de delar som är relevanta för uppdraget.",
     groups:[
-      {title:"Uppdragets omfattning", items:[
-        "Tjänster som ingår i uppdraget är specificerade",
-        "Tjänster som inte ingår i uppdraget är tydliggjorda",
-        "Ansvarsfördelningen mellan byrån och kunden är fastställd",
-        "Eventuella tilläggstjänster och tilläggsarbete är definierade",
-        "Kundens förväntningar på leveransen är dokumenterade"
+      {title:"Behörigheter", items:[
+        {id:"authorityAccess", text:"Nödvändiga myndighets- och ombudsbehörigheter är på plats"},
+        {id:"bankSystemAccess", text:"Nödvändiga bank- och systembehörigheter är på plats"},
+        {id:"correctAccess", text:"Rätt personer har rätt åtkomst"}
       ]},
-      {title:"Pris och fakturering", items:[
-        "Pris och prismodell är fastställd",
-        "Faktureringsintervall är fastställd",
-        "Eventuella timpriser för tilläggsarbete är kommunicerade",
-        "Villkor för prisjustering är tydliggjorda",
-        "Betalningsvillkor är fastställda"
+      {title:"Systemuppsättning", items:[
+        {id:"baseSetup", text:"Grundinställningar och kontoplan är korrekt konfigurerade"},
+        {id:"vatSetup", text:"Moms- och skattehantering är korrekt konfigurerad", visibleWhen:"vat"},
+        {id:"payrollSetup", text:"Lönesystem och relevanta lönebehörigheter är uppsatta", visibleWhen:"payroll"},
+        {id:"paymentFlows", text:"Nödvändiga bank-, faktura- och betalningsflöden är uppsatta", visibleWhen:"bookkeeping"},
+        {id:"foreignSetup", text:"Relevant utlandsmoms/OSS eller annan utlandshantering är konfigurerad", visibleWhen:"foreign"},
+        {id:"integrations", text:"Nödvändiga integrationer och specialfunktioner är aktiverade och testade"}
       ]},
-      {title:"Praktiska förutsättningar", items:[
-        "Bokförings- och ekonomisystem är fastställt",
-        "Kommunikationskanaler är fastställda",
-        "Rutiner och deadlines för överlämning av underlag är överenskomna",
-        "Ansvariga kontaktpersoner hos kunden och byrån är utsedda",
-        "Rutiner för godkännande och attest är fastställda"
+      {title:"Digital dokumenthantering", items:[
+        {id:"documentStructure", text:"Kundens dokumentstruktur är upprättad enligt byråns standard"},
+        {id:"documentsSaved", text:"Nödvändiga dokument är sparade på rätt plats"},
+        {id:"documentAccess", text:"Åtkomst och delning är korrekt konfigurerade"}
       ]},
-      {title:"Avtal och efterlevnad", items:[
-        "Uppdragsavtal är upprättat",
-        "Eventuella bilagor och särskilda villkor är inkluderade",
-        "Personuppgiftsbehandling/GDPR är hanterad",
-        "Sekretess och informationshantering är reglerad",
-        "Avtalet är granskat och godkänt av kunden",
-        "Avtalet är signerat av behöriga parter",
-        "Signerat avtal är arkiverat"
+      {title:"Funktionstest", items:[
+        {id:"systemTest", text:"Väsentliga system, integrationer och automatiska flöden är testade"}
       ]}
     ]
   },
   {
-    id:"underlag", title:"Insamling av underlag",
-    syfte:"Samla in och kvalitetssäkra nödvändiga ekonomiska och administrativa underlag från tidigare perioder för ett korrekt utgångsläge.",
-    groups:[{items:[
-      "SIE-fil har erhållits",
-      "Senaste bokslut har erhållits",
-      "Senaste årsredovisning har erhållits, om relevant",
-      "Senaste deklarationer har erhållits",
-      "Kontoplan har erhållits",
-      "Verifikationer och bokföringsunderlag har erhållits",
-      "Anläggningsregister har erhållits",
-      "Leverantörsregister har erhållits",
-      "Kundregister har erhållits",
-      "Lista över obetalda kund- och leverantörsfakturor har erhållits",
-      "Pågående projekt har identifierats och dokumenterats",
-      "Semesterlöneskuld har dokumenterats",
-      "Relevanta avtal har erhållits"
-    ]}]
-  },
-  {
-    id:"overtag", title:"Övertag från tidigare byrå",
-    syfte:"Säkerställa en spårbar överlämning och att relevant information, pågående ärenden och räkenskapsinformation kommer över innan den nya redovisningen påbörjas.",
+    id:"uppfoljning", title:"Startklar & uppföljning",
+    syfte:"Verifiera att kunden är redo för löpande arbete och fånga upp problem efter den första tiden.",
     groups:[
-      {label:"1", title:"Kontakt med tidigare byrå", items:[
-        "Tidigare byrå kontaktad och övertagandet kommunicerat",
-        "Eventuella problem, tvister eller andra relevanta omständigheter identifierade",
-        "Eventuella obetalda arvoden noterade",
-        "Datum och resultat av kontakten dokumenterade"
+      {title:"Startklar", items:[
+        {id:"acceptanceAgreement", text:"Kundaccept och uppdragsavtal är klara", disabledWhen:"startPrerequisites"},
+        {id:"openingReady", text:"Nödvändigt underlag och ekonomiskt utgångsläge är kontrollerade", visibleWhen:"existing"},
+        {id:"systemsReady", text:"Behörigheter, system och integrationer fungerar"},
+        {id:"workReady", text:"Ansvar, arbetsrutiner och kommande deadlines är tydliga"},
+        {id:"remaining", text:"Eventuella kvarstående punkter är dokumenterade och har en ansvarig"}
       ]},
-      {label:"2", title:"Räkenskapsinformation och system", items:[
-        "Aktuell SIE-fil/räkenskapsinformation mottagen",
-        "Nödvändigt historiskt räkenskapsmaterial tillgängligt",
-        "Verifikationer och bilagor tillgängliga",
-        "Relevant systemdokumentation och behandlingshistorik tillgänglig",
-        "Kontoplan, dimensioner och relevanta systeminställningar överförda/dokumenterade",
-        "Kunden har fortsatt tillgång till nödvändig historisk information"
-      ]},
-      {label:"3", title:"Pågående arbete och ansvar", items:[
-        "Pågående bokföring kartlagd och ansvar fördelat",
-        "Momsdeklaration kartlagd och ansvar fördelat",
-        "Arbetsgivardeklaration kartlagd och ansvar fördelat",
-        "Bokslut/årsredovisning kartlagd och ansvar fördelat",
-        "Inkomstdeklaration kartlagd och ansvar fördelat",
-        "Pågående myndighetsärenden eller revisioner kartlagda",
-        "Övriga viktiga deadlines/ärenden identifierade"
-      ]},
-      {label:"4", title:"Ombud och behörigheter", items:[
-        "Tidigare byrås behörigheter/fullmakter identifierade",
-        "Nödvändiga gamla behörigheter avslutade",
-        "Nya ombud och behörigheter registrerade",
-        "Bank- och systembehörigheter uppdaterade"
-      ]},
-      {label:"5", title:"Kontroll av ingående balanser", items:[
-        "Bankkonton avstämda",
-        "Skattekonto avstämt",
-        "Kund- och leverantörsreskontra kontrollerad",
-        "Moms kontrollerad",
-        "Övriga väsentliga balansposter kontrollerade",
-        "Eventuella fel eller avvikelser identifierade och dokumenterade"
-      ]},
-      {label:"6", title:"Slutkontroll", items:[
-        "Relevant räkenskapsinformation mottagen",
-        "Pågående arbete och ansvarsfördelning klarlagda",
-        "Nödvändiga behörigheter uppdaterade",
-        "Ingående balanser kontrollerade",
-        "Eventuella brister eller fel hanterade enligt byråns rutin",
-        "Slutstatus för övertagandet fastställd och dokumenterad"
+      {title:"Uppföljning efter start", items:[
+        {id:"customerFollowup", text:"Kunden är kontaktad och övergången fungerar som förväntat"},
+        {id:"routineFollowup", text:"Rutiner för kommunikation och inskickning av material fungerar"},
+        {id:"technicalFollowup", text:"Behörigheter, integrationer och relevanta systemflöden fungerar"},
+        {id:"issuesFollowup", text:"Eventuella problem, saknade uppgifter eller brister är identifierade och hanterade"}
       ]}
     ]
-  },
-  {
-    id:"behorigheter", title:"Behörigheter",
-    syfte:"Säkerställa att kunden och redovisningsbyrån har rätt behörigheter i de system och myndighetstjänster som krävs för uppdraget.",
-    groups:[{items:[
-      "Kartlagt vilka myndigheter och system kunden använder",
-      "Kontrollerat vilka personer hos kunden som är behöriga",
-      "Säkerställt att redovisningsbyrån får nödvändiga ombudsbehörigheter",
-      "Kontrollerat behörigheter hos Skatteverket",
-      "Kontrollerat behov av behörigheter hos Bolagsverket",
-      "Kontrollerat behörigheter och åtkomst till kundens bank",
-      "Skapat/kontrollerat användarbehörigheter i bokföringssystemet",
-      "Kontrollerat behörigheter i lönesystem",
-      "Kontrollerat behörigheter i fakturasystem",
-      "Kontrollerat behörigheter i kvittohanteringssystem",
-      "Kontrollerat behörigheter i tidrapporteringssystem",
-      "Kontrollerat behörigheter i webbshop",
-      "Kontrollerat integrationer/behörigheter i andra tjänster (t.ex. Klarna, Shopify, Stripe)",
-      "Dokumenterat vilka behörigheter som tilldelats och till vilka personer",
-      "Säkerställt rutiner för att ändra eller avsluta behörigheter vid rollbyte/avslut"
-    ]}]
-  },
-  {
-    id:"systemuppsattning", title:"Systemuppsättning",
-    syfte:"Säkerställa att ekonomisystemet är korrekt konfigurerat utifrån kundens verksamhet, regelverk och rapporteringsbehov.",
-    groups:[
-      {label:"1", title:"Grundinställningar", items:[
-        "Räkenskapsår kontrollerat och registrerat",
-        "K-regelverk fastställt",
-        "Redovisningsmetod fastställd",
-        "Redovisningsvaluta och eventuella utländska valutor konfigurerade",
-        "Företags- och kontaktuppgifter registrerade"
-      ]},
-      {label:"2", title:"Kontoplan och uppföljning", items:[
-        "Lämplig kontoplan vald och anpassad",
-        "Moms- och relevanta branschkonton kontrollerade",
-        "Eventuella dimensioner uppsatta",
-        "Kostnadsställen/resultatenheter uppsatta vid behov",
-        "Projektredovisning uppsatt vid behov",
-        "Eventuella särskilda rapporteringsbehov beaktade"
-      ]},
-      {label:"3", title:"Moms och skatter", items:[
-        "Momsregistrering och momsperiod kontrollerad",
-        "Rätt momshantering konfigurerad",
-        "Utlandshandel konfigurerad vid behov",
-        "Eventuella särskilda momsflöden (t.ex. OSS) uppsatta vid behov"
-      ]},
-      {label:"4", title:"Bank, fakturor och betalningsflöden", items:[
-        "Bankkoppling aktiverad och testad",
-        "Bankgiro/plusgiro registrerat vid behov",
-        "Kund- och leverantörsreskontra konfigurerad",
-        "Fakturamallar och betalningsvillkor uppsatta",
-        "OCR/e-fakturaflöden uppsatta och testade vid behov",
-        "Betalningsflöden och eventuella betalfiler testade"
-      ]},
-      {label:"5", title:"Integrationer och övriga funktioner", items:[
-        "Nödvändiga integrationer identifierade",
-        "Integrationer aktiverade och testade",
-        "Kassasystem kopplat vid behov",
-        "Löne-/tidssystem kopplat vid behov",
-        "Anläggningsregister uppsatt vid behov",
-        "Övriga kundspecifika funktioner konfigurerade"
-      ]},
-      {label:"6", title:"Systemdokumentation och test", items:[
-        "Nödvändig systemdokumentation upprättad/uppdaterad",
-        "Behandlingshistorik och relevanta systeminställningar säkerställda",
-        "Automatiska flöden testade",
-        "Bank-, faktura- och integrationsflöden testade",
-        "Rapportering och momsrapport testade",
-        "Systemet är redo för löpande redovisning"
-      ]}
-    ]
-  },
-  {
-    id:"dokumenthantering", title:"Digital dokumenthantering",
-    syfte:"Säkerställa att kundens dokumentation lagras strukturerat, säkert och är lätt att hitta och använda under hela uppdraget.",
-    groups:[
-      {label:"1", title:"Dokumentstruktur", items:[
-        "Kundens standardiserade mappstruktur skapad",
-        "Administrativ dokumentation separerad från löpande redovisning och bokslut",
-        "KYC, avtal, fullmakter och övriga onboardingdokument sparade på rätt plats",
-        "System- och uppdragsdokumentation sparad på rätt plats"
-      ]},
-      {label:"2", title:"Namngivning och struktur", items:[
-        "Byråns standard för fil- och mappnamn tillämpad",
-        "Dokumentationen är sökbar och lätt att förstå för en annan medarbetare",
-        "Dokument och versioner kan följas över tid vid behov"
-      ]},
-      {label:"3", title:"Behörigheter och delning", items:[
-        "Rätt medarbetare har tillgång till kundens material",
-        "Behörigheter är anpassade efter roll och behov",
-        "Kunden har tillgång till relevant material via godkänd kanal",
-        "Delning med tredje part sker endast via godkänd och säker kanal",
-        "Känsligt material skyddas enligt byråns rutiner"
-      ]},
-      {label:"4", title:"Säkerhetskopiering och åtkomst", items:[
-        "Kundens dokumentation omfattas av byråns backup-rutin",
-        "Nödvändig räkenskapsinformation och dokumentation kan återskapas vid behov",
-        "Byrån har tillgång till relevant historiskt material även vid system- eller leverantörsbyte"
-      ]},
-      {label:"5", title:"Slutkontroll", items:[
-        "Dokumentstrukturen är komplett",
-        "Behörigheter är kontrollerade",
-        "Nödvändiga dokument är sparade",
-        "Material kan hittas och nås av behörig personal",
-        "Dokumenthanteringen följer byråns interna rutiner"
-      ]}
-    ]
-  },
-  {
-    id:"kommunikation", title:"Kommunikation",
-    syfte:"Skapa tydliga och effektiva kommunikationsrutiner mellan kunden och redovisningsbyrån.",
-    groups:[{items:[
-      "Kontaktvägar mellan kund och byrå bestämda",
-      "Huvudsaklig kontaktperson hos kunden utsedd",
-      "Ansvarig kontaktperson på redovisningsbyrån utsedd",
-      "Rutin för hantering av löpande frågor bestämd",
-      "Rutin för hur kunden ska skicka in bokföringsmaterial bestämd",
-      "System eller plattformar för samarbetet beslutade",
-      "Förväntade svarstider fastställda",
-      "Rutin för brådskande ärenden bestämd",
-      "Frekvens för avstämningar/möten bestämd",
-      "Kunden informerad om deadline för momsdeklaration",
-      "Kunden informerad om deadline för arbetsgivardeklaration",
-      "Kunden informerad om deadline för bokslut",
-      "Kunden informerad om deadline för årsredovisning",
-      "Kunden informerad om deadline för inkomstdeklaration",
-      "Kommunikationsrutinerna dokumenterade"
-    ]}]
-  },
-  {
-    id:"internplanering", title:"Intern planering",
-    syfte:"Säkerställa att det internt på redovisningsbyrån finns en tydlig ansvarsfördelning för kunden.",
-    groups:[{items:[
-      "Huvudansvarig konsult för kunden utsedd",
-      "Reserv/ersättare vid frånvaro utsedd",
-      "Behov av lönespecialist identifierat",
-      "Behov av skattespecialist identifierat",
-      "Behov av regelverksspecialist (t.ex. K3) identifierat",
-      "Behov av momsspecialist identifierat",
-      "Arbetsuppgifter fördelade mellan berörda medarbetare",
-      "Ansvar för löpande bokföring fastställt",
-      "Ansvar för avstämningar fastställt",
-      "Ansvar för moms fastställt",
-      "Ansvar för AGI fastställt",
-      "Ansvar för lön fastställt",
-      "Ansvar för bokslut fastställt",
-      "Ansvar för årsredovisning fastställt",
-      "Ansvar för deklaration fastställt",
-      "Återkommande arbetsuppgifter inlagda i kalender/planeringsverktyg",
-      "Ansvarsfördelningen dokumenterad",
-      "Berörda medarbetare informerade om kunden och uppdragets omfattning"
-    ]}]
-  },
-  {
-    id:"uppfoljning", title:"Uppföljning",
-    syfte:"Kontrollera att onboardingprocessen har fungerat och identifiera eventuella problem och förbättringsområden.",
-    groups:[{items:[
-      "Kunden kontaktad för uppföljning av onboardingprocessen",
-      "Kundens nöjdhet med övergången undersökt",
-      "Kommunikationsrutinernas funktion kontrollerad",
-      "Kontrollerat att material skickas in på rätt sätt",
-      "Kontrollerat att samtliga nödvändiga behörigheter finns",
-      "Kontrollerat att integrationer fungerar",
-      "Kontrollerat att bokföring, lön, fakturering och övriga system fungerar som planerat",
-      "Identifierat om någon information eller något underlag saknas",
-      "Kontrollerat om något har missats under onboardingprocessen",
-      "Eventuella problem dokumenterade",
-      "Åtgärder för identifierade problem framtagna",
-      "Feedback insamlad från kunden",
-      "Feedback insamlad internt från ansvarig konsult",
-      "Bedömning gjord av om onboardingprocessen behöver förändras",
-      "Interna rutiner och checklistor uppdaterade vid behov",
-      "Uppföljning av att åtgärder genomförts"
-    ]}]
   }
 ];
 
@@ -412,6 +121,12 @@ function blankPhaseOne(){
     businessStatus: "",              // "new" | "existing"
     services: [],                     // bookkeeping, vat, payroll, annual, tax, other
     otherService: "",
+    // Kompakta registrerings- och styrfrågor som används för att filtrera Fas 3–6.
+    vatRegistered: "",                // "yes" | "no"
+    employerRegistered: "",           // "yes" | "no"
+    fTaxRegistered: "",               // "yes" | "no"
+    previousFirm: "",                 // "yes" | "no" (endast befintlig verksamhet)
+    foreignActivity: "",              // "yes" | "no"
     latest: { turnover:"", balance:"", employees:"" },
     previous: { turnover:"", balance:"", employees:"" },
     expected: { turnover:"", balance:"", employees:"" },
@@ -567,7 +282,17 @@ function phaseOneCountsOf(data){
   const scope = p.businessStatus === 'existing'
     ? ['turnover','balance','employees'].every(k => toNumber(p.latest[k]) !== null && toNumber(p.previous[k]) !== null)
     : ['turnover','balance','employees'].some(k => toNumber(p.expected[k]) !== null);
-  const checks = [company,status,services,scope];
+
+  // Registreringar räknas som en kompakt del. Moms/arbetsgivare krävs bara när uppdraget gör dem relevanta.
+  const registrationChecks = [!!p.fTaxRegistered];
+  if(p.services.includes('vat')) registrationChecks.push(!!p.vatRegistered);
+  if(p.services.includes('payroll')) registrationChecks.push(!!p.employerRegistered);
+  const registrations = registrationChecks.every(Boolean);
+
+  // Dessa två svar styr framför allt vilka arbetsmoment som visas senare i onboardingen.
+  const steering = !!p.foreignActivity && (p.businessStatus !== 'existing' || !!p.previousFirm);
+
+  const checks = [company,status,services,scope,registrations,steering];
   return {done:checks.filter(Boolean).length,total:checks.length};
 }
 function phaseOneCounts(){ return phaseOneCountsOf(phaseOne); }
@@ -582,6 +307,10 @@ function safe(text){
 
 function radioCard(name, value, label, checked){
   return `<label class="choice-card"><input type="radio" name="${name}" data-p1="${name}" value="${value}" ${checked ? 'checked' : ''}><span class="choice-dot"></span><span>${label}</span></label>`;
+}
+
+function compactYesNo(name, label, value){
+  return `<div class="compact-choice-line"><span>${label}</span><div class="choice-row compact">${radioCard(name,'yes','Ja',value==='yes')}${radioCard(name,'no','Nej',value==='no')}</div></div>`;
 }
 
 function numberField(path, label, value){
@@ -644,7 +373,7 @@ function renderPhaseOnePage(){
   const vatAvailable = vat.visible ? (vat.options.filter(o=>!o.disabled).map(o=>o.label).join(' / ') || 'Kan inte bedömas ännu') : 'Inte aktuellt';
 
   page.innerHTML = `
-    <div class="page-eyebrow">Onboarding · Steg 1 av 12</div>
+    <div class="page-eyebrow">Onboarding · Steg 1 av 6</div>
     <h2>Företagsuppgifter och uppdragsprofil</h2>
     <p class="syfte">Ange ett fåtal grunduppgifter. Verktyget återanvänder dem för att filtrera relevanta alternativ och ge regelverksstöd.</p>
     <div class="progress-wrap"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} grunddelar ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
@@ -655,9 +384,19 @@ function renderPhaseOnePage(){
 
     <section class="phase-block"><div class="phase-number">03</div><div><h3>Vilka tjänster ska byrån utföra? <span class="required">Minst ett val</span></h3><div class="service-grid">${services.map(([v,l])=>`<label class="service-option"><input type="checkbox" data-p1-service="${v}" ${phaseOne.services.includes(v)?'checked':''}><span class="native-box"></span><span>${l}</span></label>`).join('')}</div>${phaseOne.services.includes('other')?`<label class="field other-field"><span>Beskriv annan tjänst</span><input type="text" data-p1-other value="${safe(phaseOne.otherService)}" placeholder="Annan tjänst"></label>`:''}</div></section>
 
-    <section class="phase-block"><div class="phase-number">04</div><div><h3>Verksamhetens omfattning</h3><p class="block-help">Ange uppgifterna från befintliga underlag där det är möjligt. Uppgifterna används för att bedöma vilka regler och alternativ som kan vara aktuella för kunden.</p>${phaseOne.businessStatus==='existing'?historical:phaseOne.businessStatus==='new'?`${expected}<div class="info-box">ⓘ Ange uppskattad omfattning om den är känd. Uppgifterna används endast som underlag för regelverksstöd och kan behöva uppdateras när faktisk omfattning är känd.</div>`:`<div class="empty-state">Välj först om verksamheten är nystartad eller befintlig.</div>`}</div></section>
+    <section class="phase-block"><div class="phase-number">04</div><div><h3>Registreringar och styrande uppgifter</h3><p class="block-help">Några få svar används för att dölja sådant som inte är relevant i senare faser.</p>
+      <div class="compact-choice-stack">
+        ${compactYesNo('fTaxRegistered','F-skatt registrerad?',phaseOne.fTaxRegistered)}
+        ${phaseOne.services.includes('vat') ? compactYesNo('vatRegistered','Momsregistrerad?',phaseOne.vatRegistered) : ''}
+        ${phaseOne.services.includes('payroll') ? compactYesNo('employerRegistered','Arbetsgivarregistrerad?',phaseOne.employerRegistered) : ''}
+        ${phaseOne.businessStatus==='existing' ? compactYesNo('previousFirm','Tidigare redovisningsbyrå?',phaseOne.previousFirm) : ''}
+        ${compactYesNo('foreignActivity','Utlandsverksamhet, import eller export?',phaseOne.foreignActivity)}
+      </div>
+    </div></section>
 
-    <section class="phase-block rules"><div class="phase-number">05</div><div><h3>Regelverksstöd</h3><p class="block-help">Detta är automatiskt stöd utifrån uppgifterna ovan. Gör bara ett aktivt val där flera alternativ är möjliga.</p>
+    <section class="phase-block"><div class="phase-number">05</div><div><h3>Verksamhetens omfattning</h3><p class="block-help">Ange uppgifterna från befintliga underlag där det är möjligt. Uppgifterna används för att bedöma vilka regler och alternativ som kan vara aktuella för kunden.</p>${phaseOne.businessStatus==='existing'?historical:phaseOne.businessStatus==='new'?`${expected}<div class="info-box">ⓘ Ange uppskattad omfattning om den är känd. Uppgifterna används endast som underlag för regelverksstöd och kan behöva uppdateras när faktisk omfattning är känd.</div>`:`<div class="empty-state">Välj först om verksamheten är nystartad eller befintlig.</div>`}</div></section>
+
+    <section class="phase-block rules"><div class="phase-number">06</div><div><h3>Regelverksstöd</h3><p class="block-help">Detta är automatiskt stöd utifrån uppgifterna ovan. Gör bara ett aktivt val där flera alternativ är möjliga.</p>
       ${phaseOne.companyType==='ab'?renderRuleCard('Revisionsplikt',audit):''}
       ${phaseOne.companyType==='ab'?renderRuleCard('Större företag',large):''}
       ${phaseOne.companyType?`<div class="rule-card"><div class="rule-title">K-regelverk</div><div class="rule-options">${kHtml}</div></div>`:''}
@@ -912,7 +651,7 @@ function renderPhaseTwoPage(){
     </div></section>` : '';
 
   page.innerHTML = `
-    <div class="page-eyebrow">Onboarding · Steg 2 av 12</div>
+    <div class="page-eyebrow">Onboarding · Steg 2 av 6</div>
     <h2>Kundkännedom</h2>
     <p class="syfte">Bekräfta grundkontrollerna. Verktyget visar följdfrågor och riskstöd bara när något behöver utredas vidare.</p>
     <div class="progress-wrap"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} huvuddelar klara</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
@@ -1020,7 +759,7 @@ function bindPhaseTwoEvents(){
 /* ============ APP STATE ============ */
 let customers = [];          // [{id, name, createdAt, lastTab}]
 let activeCustomerId = null; // id of the currently open customer, or null
-let state = {};              // checklist state for fas 2–12: { sectionId: [bool,...] }
+let state = {};              // checklist state för de handlingsorienterade faserna 3–6
 let phaseOne = blankPhaseOne(); // strukturerad data för Fas 1
 let phaseTwo = blankPhaseTwo(); // strukturerad, villkorsstyrd data för Fas 2
 let view = 'customers';      // 'customers' | 'checklist'
@@ -1029,12 +768,39 @@ let activeId = SECTIONS[0].id;
 function flatCount(section){
   return section.groups.reduce((n,g)=>n+g.items.length,0);
 }
+
+/* Fas 3–6 har fasta huvudpunkter, men vissa ska bara räknas och visas när
+   Fas 1 gör dem relevanta. Indexen ligger ändå kvar så sparad checklistdata
+   inte flyttar på sig när ett villkor ändras. */
+function isChecklistItemVisible(item, p1=phaseOne){
+  if(!item || typeof item === 'string' || !item.visibleWhen) return true;
+  switch(item.visibleWhen){
+    case 'existing': return p1.businessStatus === 'existing';
+    case 'previousFirm': return p1.businessStatus === 'existing' && p1.previousFirm === 'yes';
+    case 'vat': return p1.services.includes('vat');
+    case 'payroll': return p1.services.includes('payroll');
+    case 'bookkeeping': return p1.services.includes('bookkeeping');
+    case 'foreign': return p1.foreignActivity === 'yes';
+    default: return true;
+  }
+}
+function checklistItemText(item){ return typeof item === 'string' ? item : item.text; }
+function visibleFlatIndices(section, p1=phaseOne){
+  const indices = [];
+  let flatIdx = 0;
+  section.groups.forEach(g=>g.items.forEach(item=>{
+    if(isChecklistItemVisible(item, p1)) indices.push(flatIdx);
+    flatIdx++;
+  }));
+  return indices;
+}
 function blankState(){
   const s = {};
   SECTIONS.forEach(sec=>{ s[sec.id] = Array.from({length:flatCount(sec)}, ()=>false); });
   return s;
 }
 function ensureState(s){
+  s = s && typeof s === 'object' ? s : {};
   SECTIONS.forEach(sec=>{
     const n = flatCount(sec);
     if(!Array.isArray(s[sec.id]) || s[sec.id].length!==n){
@@ -1045,18 +811,18 @@ function ensureState(s){
   return s;
 }
 
-function sectionPctOf(s, section){
+function sectionPctOf(s, section, p1=phaseOne){
   const arr = (s && s[section.id]) || [];
-  const total = flatCount(section);
-  if(total===0) return 0;
-  const done = arr.filter(Boolean).length;
-  return Math.round((done/total)*100);
+  const visible = visibleFlatIndices(section, p1);
+  if(visible.length===0) return 100;
+  const done = visible.filter(i=>!!arr[i]).length;
+  return Math.round((done/visible.length)*100);
 }
-function sectionCountsOf(s, section){
+function sectionCountsOf(s, section, p1=phaseOne){
   const arr = (s && s[section.id]) || [];
-  const total = flatCount(section);
-  const done = arr.filter(Boolean).length;
-  return {done, total};
+  const visible = visibleFlatIndices(section, p1);
+  const done = visible.filter(i=>!!arr[i]).length;
+  return {done, total:visible.length};
 }
 function overallPctOf(s){
   let done=0, total=0;
@@ -1137,7 +903,7 @@ function getCustomerOverallPct(customerId){
   const customerPhaseTwo = loadPhaseTwoFor(customerId);
   let done=0,total=0;
   SECTIONS.forEach(sec=>{
-    const c = sec.id === 'kontakt' ? phaseOneCountsOf(customerPhaseOne) : sec.id === 'kundkannedom' ? phaseTwoCountsOf(customerPhaseTwo) : sectionCountsOf(customerState, sec);
+    const c = sec.id === 'kontakt' ? phaseOneCountsOf(customerPhaseOne) : sec.id === 'kundkannedom' ? phaseTwoCountsOf(customerPhaseTwo) : sectionCountsOf(customerState, sec, customerPhaseOne);
     done += c.done; total += c.total;
   });
   return total===0 ? 0 : Math.round((done/total)*100);
@@ -1155,6 +921,10 @@ function addCustomer(name){
   saveCustomers();
   openCustomer(customer.id);
 }
+
+function validTabId(id){
+  return id === 'summary' || SECTIONS.some(s=>s.id===id) ? id : SECTIONS[0].id;
+}
 function openCustomer(id){
   const c = customers.find(x=>x.id===id);
   if(!c) return;
@@ -1164,7 +934,7 @@ function openCustomer(id){
   phaseOne = loadPhaseOneFor(id);
   phaseTwo = loadPhaseTwoFor(id);
   view = 'checklist';
-  activeId = c.lastTab || SECTIONS[0].id;
+  activeId = validTabId(c.lastTab || SECTIONS[0].id);
   fullRender();
 }
 function deleteCustomer(id){
@@ -1217,7 +987,7 @@ function renderSidebar(){
     btn.innerHTML = `
       <span class="num">${String(idx+1).padStart(2,'0')}</span>
       <span class="ring" style="--pct:${pct}; --ringcolor:${pctColor(pct)}"><span>${pct}</span></span>
-      <span class="label"><span class="t">${s.title}</span><span class="f">${c.done}/${c.total} klara</span></span>
+      <span class="label"><span class="t">${s.title}</span><span class="f">${c.total===0?'Ej aktuell':`${c.done}/${c.total} klara`}</span></span>
     `;
     btn.addEventListener('click', ()=>{ if(hasActive) setActive(s.id); });
     tabsEl.appendChild(btn);
@@ -1230,7 +1000,7 @@ function renderSidebar(){
   sBtn.className = 'tab-btn summary-btn' + (view==='checklist' && activeId==='summary' ? ' active':'');
   sBtn.dataset.id = 'summary';
   sBtn.innerHTML = `
-    <span class="num">13</span>
+    <span class="num">${String(SECTIONS.length+1).padStart(2,'0')}</span>
     <span class="ring" style="--pct:${op}; --ringcolor:${pctColor(op)}"><span>${op}</span></span>
     <span class="label"><span class="t">Sammanfattning</span><span class="f">${done}/${total} totalt</span></span>
   `;
@@ -1242,6 +1012,93 @@ function renderSidebar(){
 }
 
 /* ============ RENDER: CHECKLIST PAGES ============ */
+function findChecklistIndex(sectionId, itemId){
+  const section = SECTIONS.find(s=>s.id===sectionId);
+  if(!section) return -1;
+  let index = 0;
+  for(const group of section.groups){
+    for(const item of group.items){
+      if(typeof item !== 'string' && item.id === itemId) return index;
+      index++;
+    }
+  }
+  return -1;
+}
+function isChecklistChecked(sectionId, itemId){
+  const index = findChecklistIndex(sectionId,itemId);
+  return index >= 0 && !!(state[sectionId] && state[sectionId][index]);
+}
+function checklistItemDisabled(item){
+  if(!item || typeof item === 'string' || !item.disabledWhen) return false;
+  if(item.disabledWhen === 'startPrerequisites'){
+    const accepted = phaseTwo.acceptanceDecision === 'accept' && canAcceptCustomer().allowed;
+    return !(accepted && isChecklistChecked('avtal','agreementSigned'));
+  }
+  return false;
+}
+
+function selectedServiceNames(){
+  const labels = {bookkeeping:'Bokföring',vat:'Moms',payroll:'Lön/AGI',annual:'Bokslut/årsredovisning',tax:'Inkomstdeklaration',other:'Annat'};
+  return phaseOne.services.map(v=>labels[v] || v);
+}
+
+/* Kort kontext från tidigare faser. Det är information, inte fler frågor. */
+function renderSectionContext(section){
+  const services = selectedServiceNames();
+  if(section.id === 'avtal'){
+    return `<div class="section-context"><strong>Uppdrag från Fas 1</strong><div class="context-chips">${services.length ? services.map(x=>`<span>${safe(x)}</span>`).join('') : '<span>Inga tjänster valda ännu</span>'}</div><p>Detaljer om ansvar och rutiner behöver bara omfatta de tjänster som faktiskt ingår i uppdraget.</p></div>`;
+  }
+  if(section.id === 'overtag'){
+    if(!phaseOne.businessStatus) return `<div class="info-box">ⓘ Välj nystartad eller befintlig verksamhet i Fas 1 för att anpassa den här fasen.</div>`;
+    if(phaseOne.businessStatus === 'new') return `<div class="section-context status-neutral"><strong>⚪ Nystartad verksamhet</strong><p>Historiskt övertag och ingående balanser är inte aktuella. Den praktiska uppsättningen fortsätter i Fas 5.</p></div>`;
+    const previous = phaseOne.previousFirm === 'yes' ? 'Tidigare byrå finns – överlämningspunkterna visas.' : phaseOne.previousFirm === 'no' ? 'Ingen tidigare byrå – endast ekonomiskt underlag och ingående läge visas.' : 'Ange i Fas 1 om kunden har en tidigare redovisningsbyrå för att anpassa övertagandet.';
+    const relevant = [];
+    if(phaseOne.services.includes('vat')) relevant.push('momsperioder');
+    if(phaseOne.services.includes('payroll')) relevant.push('lön/AGI och relevant lönehistorik');
+    if(phaseOne.services.includes('annual')) relevant.push('bokslut/årsredovisning');
+    return `<div class="section-context"><strong>${safe(previous)}</strong>${relevant.length?`<p>Vid övertaget är särskilt ${safe(relevant.join(', '))} relevant utifrån uppdraget.</p>`:''}</div>`;
+  }
+  if(section.id === 'system'){
+    const details = [];
+    if(phaseOne.services.includes('vat')) details.push('moms');
+    if(phaseOne.services.includes('payroll')) details.push('lön');
+    if(phaseOne.services.includes('bookkeeping')) details.push('bank/fakturaflöden');
+    if(phaseOne.foreignActivity === 'yes') details.push('utlandshantering');
+    return `<div class="section-context"><strong>Systemdelen är filtrerad utifrån kunden</strong><p>${details.length ? `Fokus just nu: ${safe(details.join(', '))}.` : 'Fyll i uppdragsprofilen i Fas 1 för mer specifik filtrering.'} Övriga kundspecifika integrationer hanteras bara när de faktiskt används.</p></div>`;
+  }
+  if(section.id === 'uppfoljning'){
+    return `<div class="section-context"><strong>Två steg i samma fas</strong><p>Markera först kunden som startklar. Den korta uppföljningen görs lämpligen efter cirka 30–90 dagar och påverkar inte om kunden kan börja hanteras.</p></div>`;
+  }
+  return '';
+}
+
+function groupCounts(section, groupIndex){
+  let offset = 0;
+  for(let i=0;i<groupIndex;i++) offset += section.groups[i].items.length;
+  const arr = state[section.id] || [];
+  const visible = section.groups[groupIndex].items
+    .map((item,ii)=>({item,index:offset+ii}))
+    .filter(x=>isChecklistItemVisible(x.item));
+  return {done:visible.filter(x=>!!arr[x.index]).length,total:visible.length};
+}
+
+function renderSectionFooter(section){
+  if(section.id !== 'uppfoljning') return '';
+  const start = groupCounts(section,0);
+  const customerAccepted = phaseTwo.acceptanceDecision === 'accept' && canAcceptCustomer().allowed;
+  const phase3 = sectionCounts(SECTIONS.find(s=>s.id==='avtal'));
+  const phase4 = sectionCounts(SECTIONS.find(s=>s.id==='overtag'));
+  const phase5 = sectionCounts(SECTIONS.find(s=>s.id==='system'));
+  const implementationReady = [phase3,phase4,phase5].every(c=>c.total===0 || c.done===c.total);
+  let cls='status-blocked', icon='🔴', label='Inte startklar';
+  if(customerAccepted && implementationReady && start.total > 0 && start.done === start.total){ cls='status-possible'; icon='🟢'; label='Startklar'; }
+  else if(customerAccepted && (start.done > 0 || phase3.done > 0 || phase5.done > 0)){ cls='status-review'; icon='🟡'; label='Pågående – kvarstående åtgärder'; }
+  let reason = `${start.done} av ${start.total} startkontroller klara.`;
+  if(!customerAccepted) reason = 'Kundaccept behöver vara klar i Fas 2 innan kunden kan markeras som startklar.';
+  else if(!implementationReady) reason = 'Relevanta arbetsmoment i Fas 3–5 behöver slutföras innan slutstatus kan bli Startklar.';
+  return `<div class="rule-card ${cls} start-ready-card"><div class="rule-title">Onboardingstatus</div><div class="rule-result">${icon} <strong>${label}</strong></div><p class="micro-help">${safe(reason)}</p></div>`;
+}
+
 function renderSectionPage(section){
   const page = document.createElement('div');
   page.className = 'page';
@@ -1254,37 +1111,40 @@ function renderSectionPage(section){
   section.groups.forEach((g, gi)=>{
     let offset = 0;
     for(let i=0;i<gi;i++) offset += section.groups[i].items.length;
-    let headHtml = "";
-    if(g.title){
-      headHtml = `<div class="group-head">${g.label? `<span class="gnum">${g.label}</span>`:""}<span class="gtitle">${g.title}</span></div>`;
-    }
     let itemsHtml = "";
-    g.items.forEach((text, ii)=>{
+    g.items.forEach((item, ii)=>{
+      if(!isChecklistItemVisible(item)) return;
       const flatIdx = offset+ii;
       const checked = (state[section.id] && state[section.id][flatIdx]) ? 'checked' : '';
+      const disabled = checklistItemDisabled(item);
       itemsHtml += `
-        <label class="item">
-          <input type="checkbox" data-section="${section.id}" data-index="${flatIdx}" ${checked}>
+        <label class="item ${disabled?'is-disabled':''}">
+          <input type="checkbox" data-section="${section.id}" data-index="${flatIdx}" ${checked} ${disabled?'disabled':''}>
           <span class="box">${checkSvg}</span>
-          <span class="txt">${text}</span>
+          <span class="txt">${safe(checklistItemText(item))}${disabled?'<small class="item-note">Kräver godkänd kundaccept i Fas 2 och signerat uppdragsavtal i Fas 3.</small>':''}</span>
         </label>
       `;
     });
+    if(!itemsHtml) return;
+    const headHtml = g.title ? `<div class="group-head">${g.label? `<span class="gnum">${g.label}</span>`:""}<span class="gtitle">${g.title}</span></div>` : '';
     groupsHtml += `<div class="group">${headHtml}${itemsHtml}</div>`;
   });
 
+  const progressText = c.total ? `${c.done} av ${c.total} punkter avklarade` : 'Inte aktuell för den här kunden';
   page.innerHTML = `
-    <div class="page-eyebrow">Onboarding · Steg ${SECTIONS.findIndex(s=>s.id===section.id)+1} av 12</div>
+    <div class="page-eyebrow">Onboarding · Steg ${SECTIONS.findIndex(s=>s.id===section.id)+1} av ${SECTIONS.length}</div>
     <h2>${section.title}</h2>
     <p class="syfte">${section.syfte}</p>
     <div class="progress-wrap" id="progress-${section.id}">
       <div class="progress-top">
         <span class="pct-num">${pct}%</span>
-        <span class="frac">${c.done} av ${c.total} punkter avklarade</span>
+        <span class="frac">${progressText}</span>
       </div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div>
     </div>
-    ${groupsHtml}
+    ${renderSectionContext(section)}
+    ${groupsHtml || '<div class="empty-state">Inga arbetsmoment är aktuella i den här fasen utifrån uppgifterna i Fas 1.</div>'}
+    ${renderSectionFooter(section)}
   `;
   return page;
 }
@@ -1307,7 +1167,7 @@ function renderSummaryPage(){
       <div class="sum-row" data-id="${s.id}">
         <span class="sname">${s.title}</span>
         <span class="sbar"><span class="sbar-fill" style="width:${pct}%; background:${pctColor(pct)}"></span></span>
-        <span class="sfrac">${c.done}/${c.total}</span>
+        <span class="sfrac">${c.total===0?'Ej aktuell':`${c.done}/${c.total}`}</span>
       </div>
     `;
   });
@@ -1315,11 +1175,11 @@ function renderSummaryPage(){
   page.innerHTML = `
     <div class="page-eyebrow">Onboarding · Översikt</div>
     <h2>Sammanfattning${activeCustomer ? ' – '+activeCustomer.name : ''}</h2>
-    <p class="syfte">Här ser du hur långt onboardingen av kunden har kommit totalt, och vilka av de tolv checklistorna som fortfarande behöver bockas av.</p>
+    <p class="syfte">Här ser du hur långt onboardingen av kunden har kommit och vilka av de sex faserna som återstår.</p>
     <div class="summary-hero">
       <div class="big-ring" style="--pct:${op}; --ringcolor:${pctColor(op)}"><span class="num">${op}%</span></div>
       <div class="cap">Total färdigställd onboarding</div>
-      <div class="sub">${done} av ${total} punkter avklarade över samtliga checklistor</div>
+      <div class="sub">${done} av ${total} punkter avklarade över samtliga faser</div>
     </div>
     <div id="sum-rows">${rows}</div>
   `;
@@ -1400,7 +1260,7 @@ function renderMain(){
 
   // view === 'checklist'
   SECTIONS.forEach(s=>{
-    // Fas 1 och Fas 2 har egna, villkorsstyrda formulär. Fas 3–12 använder den ursprungliga checklist-renderaren.
+    // Fas 1 och Fas 2 har egna formulär. Fas 3–6 återanvänder den befintliga checklist-renderaren med villkorsstyrning.
     const page = s.id === 'kontakt' ? renderPhaseOnePage() : s.id === 'kundkannedom' ? renderPhaseTwoPage() : renderSectionPage(s);
     if(s.id===activeId) page.classList.add('active');
     mainEl.appendChild(page);
@@ -1435,7 +1295,7 @@ function refreshChecklistUI(){
       const pct = sectionPct(s);
       const c = sectionCounts(s);
       wrap.querySelector('.pct-num').textContent = pct+'%';
-      wrap.querySelector('.frac').textContent = `${c.done} av ${c.total} punkter avklarade`;
+      wrap.querySelector('.frac').textContent = c.total ? `${c.done} av ${c.total} punkter avklarade` : 'Inte aktuell för den här kunden';
       const fill = wrap.querySelector('.bar-fill');
       fill.style.width = pct+'%';
       fill.style.background = pctColor(pct);
@@ -1451,7 +1311,7 @@ function refreshChecklistUI(){
       ring.style.setProperty('--pct', op);
       ring.style.setProperty('--ringcolor', pctColor(op));
       ring.querySelector('.num').textContent = op+'%';
-      summaryPage.querySelector('.sub').textContent = `${done} av ${total} punkter avklarade över samtliga checklistor`;
+      summaryPage.querySelector('.sub').textContent = `${done} av ${total} punkter avklarade över samtliga faser`;
     }
     SECTIONS.forEach(s=>{
       const row = summaryPage.querySelector(`.sum-row[data-id="${s.id}"]`);
@@ -1460,7 +1320,7 @@ function refreshChecklistUI(){
         const c = sectionCounts(s);
         row.querySelector('.sbar-fill').style.width = pct+'%';
         row.querySelector('.sbar-fill').style.background = pctColor(pct);
-        row.querySelector('.sfrac').textContent = `${c.done}/${c.total}`;
+        row.querySelector('.sfrac').textContent = c.total ? `${c.done}/${c.total}` : 'Ej aktuell';
       }
     });
   }
@@ -1509,7 +1369,7 @@ document.getElementById('reset-btn').addEventListener('click', ()=>{
     phaseOne = loadPhaseOneFor(activeCustomerId);
     phaseTwo = loadPhaseTwoFor(activeCustomerId);
     view = 'checklist';
-    activeId = c.lastTab || SECTIONS[0].id;
+    activeId = validTabId(c.lastTab || SECTIONS[0].id);
   }else{
     activeCustomerId = null;
     view = 'customers';
