@@ -707,11 +707,322 @@ function bindPhaseOneEvents(){
   if(other) other.addEventListener('input', ()=>{ phaseOne.otherService = other.value; savePhaseOne(); });
 }
 
+/* ============ FAS 2: KUNDKÄNNEDOM OCH RISKBEDÖMNING ============
+   Fas 2 använder en kompakt, villkorsstyrd datamodell. Grundkontrollerna
+   visas alltid medan följdfrågor bara visas när ett svar gör dem relevanta.
+   Övriga faser fortsätter använda den befintliga checklistmodellen. */
+const PHASE2_KEY_PREFIX = "onboarding-phase2-v1-";
+const phaseTwoKeyFor = (customerId) => PHASE2_KEY_PREFIX + customerId;
+
+function blankPhaseTwo(){
+  return {
+    identityVerified: false,
+    identitySource: "",
+    identityDate: "",
+    representativeStatus: "",      // "no" | "yes"
+    representativeChecked: false,
+
+    beneficialOwnerInvestigated: false,
+    beneficialOwnerStatus: "",      // "identified" | "none" | "unknown"
+    beneficialOwnerName: "",
+    noBeneficialOwnerReason: "",
+    alternativeBeneficialOwner: "",
+    complexOwnership: "",            // "no" | "yes"
+
+    businessUnderstood: false,
+    businessDescription: "",
+    revenueModel: "",
+    expectedTransactions: "",
+
+    pepCheckCompleted: false,
+    pepResult: "",                   // "none" | "hit"
+    sanctionsCheckCompleted: false,
+    sanctionsResult: "",             // "none" | "hit"
+    geographicRisk: "",              // "no" | "yes" | "unsure"
+
+    riskLevel: "",                   // "low" | "normal" | "high"
+    riskReason: "",
+
+    enhancedMeasures: {
+      additionalInformation: false,
+      risksInvestigated: false,
+      sourceOfFunds: false,
+      approval: false,
+      enhancedMonitoring: false
+    },
+
+    kycSufficient: "",               // "yes" | "no" | "review"
+    remainingInvestigation: "",
+    acceptanceDecision: ""           // "accept" | "decline" | "pending"
+  };
+}
+
+function ensurePhaseTwo(data){
+  const base = blankPhaseTwo();
+  const d = data && typeof data === 'object' ? data : {};
+  return {
+    ...base,
+    ...d,
+    enhancedMeasures: {...base.enhancedMeasures, ...(d.enhancedMeasures || {})}
+  };
+}
+
+function loadPhaseTwoFor(customerId){
+  try{
+    const raw = localStorage.getItem(phaseTwoKeyFor(customerId));
+    return ensurePhaseTwo(raw ? JSON.parse(raw) : null);
+  }catch(e){
+    return blankPhaseTwo();
+  }
+}
+
+function savePhaseTwo(){
+  if(!activeCustomerId) return;
+  try{
+    localStorage.setItem(phaseTwoKeyFor(activeCustomerId), JSON.stringify(phaseTwo));
+    setSaveStatus("Sparat automatiskt");
+  }catch(e){
+    setSaveStatus("Kunde inte spara just nu");
+  }
+}
+
+/* Riskindikatorerna är stöd för konsulten. De sätter aldrig risknivån automatiskt. */
+function getKycRiskIndicators(data = phaseTwo){
+  const p = ensurePhaseTwo(data);
+  const indicators = [];
+  if(p.complexOwnership === 'yes') indicators.push('Komplex ägarstruktur');
+  if(p.beneficialOwnerStatus === 'unknown') indicators.push('Verklig huvudman kan inte fastställas');
+  if(p.pepResult === 'hit') indicators.push('PEP/RCA-träff eller möjlig träff');
+  if(p.sanctionsResult === 'hit') indicators.push('Sanktionsindikator');
+  if(p.geographicRisk === 'yes') indicators.push('Geografisk risk');
+  if(p.geographicRisk === 'unsure') indicators.push('Geografisk risk behöver bedömas');
+  return indicators;
+}
+
+function isEnhancedDueDiligenceRequired(data = phaseTwo){
+  const p = ensurePhaseTwo(data);
+  return p.riskLevel === 'high' || p.pepResult === 'hit';
+}
+
+function canAcceptCustomer(data = phaseTwo){
+  const p = ensurePhaseTwo(data);
+  if(p.kycSufficient !== 'yes') return {allowed:false, reason:'Kundkännedomen måste vara tillräcklig innan kunden kan accepteras.'};
+  if(p.sanctionsResult === 'hit') return {allowed:false, reason:'Sanktionskontrollen kräver manuell bedömning innan kunden kan accepteras.'};
+  return {allowed:true, reason:''};
+}
+
+/* Progressen bygger bara på de viktigaste besluten. Detaljfälten skapar inte extra administration. */
+function phaseTwoCountsOf(data){
+  const p = ensurePhaseTwo(data);
+  const identity = p.identityVerified && !!p.representativeStatus && (p.representativeStatus === 'no' || p.representativeChecked);
+  const beneficialOwner = p.beneficialOwnerInvestigated && !!p.beneficialOwnerStatus && !!p.complexOwnership;
+  const business = p.businessUnderstood;
+  const controls = p.pepCheckCompleted && !!p.pepResult && p.sanctionsCheckCompleted && !!p.sanctionsResult && !!p.geographicRisk;
+  const risk = !!p.riskLevel && !!p.riskReason.trim();
+  const acceptance = !!p.kycSufficient && !!p.acceptanceDecision && (p.acceptanceDecision !== 'accept' || canAcceptCustomer(p).allowed);
+  const checks = [identity, beneficialOwner, business, controls, risk, acceptance];
+  return {done:checks.filter(Boolean).length, total:checks.length};
+}
+function phaseTwoCounts(){ return phaseTwoCountsOf(phaseTwo); }
+
+function kycRadio(name, value, label, current, disabled=false){
+  return `<label class="choice-card ${disabled ? 'is-disabled' : ''}">
+    <input type="radio" name="p2-${name}" data-p2-field="${name}" value="${value}" ${current===value?'checked':''} ${disabled?'disabled':''}>
+    <span class="choice-dot"></span><span>${label}</span>
+  </label>`;
+}
+
+function kycCheck(field, label, checked){
+  return `<label class="service-option kyc-check">
+    <input type="checkbox" data-p2-check="${field}" ${checked?'checked':''}>
+    <span class="native-box"></span><span>${label}</span>
+  </label>`;
+}
+
+function kycEnhancedCheck(field, label){
+  return `<label class="service-option kyc-check">
+    <input type="checkbox" data-p2-enhanced="${field}" ${phaseTwo.enhancedMeasures[field]?'checked':''}>
+    <span class="native-box"></span><span>${label}</span>
+  </label>`;
+}
+
+function kycTextField(field, label, value, placeholder=''){
+  return `<label class="field"><span>${label}</span><input type="text" data-p2-text="${field}" value="${safe(value)}" placeholder="${safe(placeholder)}"></label>`;
+}
+
+function phaseOneContextForKyc(){
+  const services = [
+    ['bookkeeping','Löpande bokföring'],['vat','Moms'],['payroll','Lön/AGI'],
+    ['annual','Bokslut/årsredovisning'],['tax','Inkomstdeklaration'],['other','Annat']
+  ];
+  const type = phaseOne.companyType === 'ab' ? 'Aktiebolag' : phaseOne.companyType === 'sole' ? 'Enskild näringsverksamhet' : 'Inte angivet';
+  const selectedServices = services.filter(([v])=>phaseOne.services.includes(v)).map(([,l])=>l).join(', ') || 'Inte angivet';
+  const scope = phaseOneScope();
+  const turnover = toNumber(scope.turnover);
+  return {type, selectedServices, turnover: turnover === null ? 'Inte angivet' : formatMoney(turnover)};
+}
+
+function renderPhaseTwoPage(){
+  const page = document.createElement('div');
+  page.className = 'page';
+  page.id = 'page-kundkannedom';
+
+  const counts = phaseTwoCounts();
+  const pct = Math.round((counts.done / counts.total) * 100);
+  const indicators = getKycRiskIndicators();
+  const enhancedRequired = isEnhancedDueDiligenceRequired();
+  const acceptance = canAcceptCustomer();
+  const p1 = phaseOneContextForKyc();
+
+  const beneficialOwnerExtra = phaseTwo.beneficialOwnerStatus === 'identified'
+    ? `<div class="conditional-block">${kycTextField('beneficialOwnerName','Namn på verklig huvudman',phaseTwo.beneficialOwnerName,'Namn')}</div>`
+    : phaseTwo.beneficialOwnerStatus === 'none'
+      ? `<div class="conditional-block">${kycTextField('noBeneficialOwnerReason','Kort motivering',phaseTwo.noBeneficialOwnerReason,'Varför bedöms ingen verklig huvudman finnas?')}</div>`
+      : phaseTwo.beneficialOwnerStatus === 'unknown'
+        ? `<div class="conditional-block"><div class="alert-box warning">🟡 <strong>Ytterligare utredning krävs</strong></div>${kycTextField('alternativeBeneficialOwner','Alternativ verklig huvudman',phaseTwo.alternativeBeneficialOwner,'Namn')}</div>`
+        : '';
+
+  const pepFollowup = phaseTwo.pepResult === 'hit'
+    ? `<div class="alert-box warning">🟡 <strong>Skärpta åtgärder krävs.</strong> Följdåtgärder visas längre ned.</div>`
+    : '';
+  const sanctionsFollowup = phaseTwo.sanctionsResult === 'hit'
+    ? `<div class="alert-box danger">🔴 <strong>Kräver manuell bedömning innan kundaccept.</strong></div>`
+    : '';
+
+  const riskHtml = indicators.length
+    ? indicators.map(x=>`<div class="risk-indicator">🟡 ${safe(x)}</div>`).join('')
+    : `<div class="risk-clear">🟢 Inga särskilda riskindikatorer identifierade</div>`;
+
+  const acceptanceWarning = !acceptance.allowed && phaseTwo.acceptanceDecision === 'accept'
+    ? `<div class="alert-box danger">🔴 <strong>${safe(acceptance.reason)}</strong></div>`
+    : (!acceptance.allowed && phaseTwo.kycSufficient
+      ? `<div class="alert-box warning">🟡 ${safe(acceptance.reason)}</div>` : '');
+
+  const enhancedHtml = enhancedRequired ? `
+    <section class="phase-block kyc-conditional-section"><div class="phase-number">06</div><div>
+      <h3>Skärpta åtgärder</h3>
+      <p class="block-help">Visa endast det som behöver göras i det här ärendet. Bocka de åtgärder som faktiskt är relevanta.</p>
+      <div class="service-grid single">
+        ${kycEnhancedCheck('additionalInformation','Ytterligare information har inhämtats')}
+        ${kycEnhancedCheck('risksInvestigated','Identifierade risker har utretts')}
+        ${kycEnhancedCheck('sourceOfFunds','Medlens/tillgångarnas ursprung har utretts när relevant')}
+        ${kycEnhancedCheck('approval','Nödvändigt godkännande har inhämtats')}
+        ${kycEnhancedCheck('enhancedMonitoring','Förstärkt uppföljning har planerats när relevant')}
+      </div>
+    </div></section>` : '';
+
+  page.innerHTML = `
+    <div class="page-eyebrow">Onboarding · Steg 2 av 12</div>
+    <h2>Kundkännedom</h2>
+    <p class="syfte">Bekräfta grundkontrollerna. Verktyget visar följdfrågor och riskstöd bara när något behöver utredas vidare.</p>
+    <div class="progress-wrap"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} huvuddelar klara</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
+
+    <section class="phase-block"><div class="phase-number">01</div><div>
+      <h3>Identitet och behörighet</h3>
+      ${kycCheck('identityVerified','Kund och företrädare identifierade och verifierade',phaseTwo.identityVerified)}
+      <details class="compact-details"><summary>Visa dokumentation</summary><div class="field-grid two">${kycTextField('identitySource','Källa',phaseTwo.identitySource,'T.ex. registreringsbevis')}${kycTextField('identityDate','Kontrolldatum',phaseTwo.identityDate,'ÅÅÅÅ-MM-DD')}</div></details>
+      <div class="mini-question"><strong>Finns ombud/fullmakt?</strong><div class="choice-row compact">${kycRadio('representativeStatus','no','Nej',phaseTwo.representativeStatus)}${kycRadio('representativeStatus','yes','Ja',phaseTwo.representativeStatus)}</div></div>
+      ${phaseTwo.representativeStatus==='yes'?`<div class="conditional-block">${kycCheck('representativeChecked','Ombud och behörighet kontrollerade',phaseTwo.representativeChecked)}</div>`:''}
+    </div></section>
+
+    <section class="phase-block"><div class="phase-number">02</div><div>
+      <h3>Verklig huvudman</h3>
+      ${kycCheck('beneficialOwnerInvestigated','Verklig huvudman och ägar-/kontrollstruktur utredd',phaseTwo.beneficialOwnerInvestigated)}
+      <div class="mini-question"><strong>Status</strong><div class="choice-row">${kycRadio('beneficialOwnerStatus','identified','Identifierad',phaseTwo.beneficialOwnerStatus)}${kycRadio('beneficialOwnerStatus','none','Ingen finns',phaseTwo.beneficialOwnerStatus)}${kycRadio('beneficialOwnerStatus','unknown','Går inte att fastställa',phaseTwo.beneficialOwnerStatus)}</div></div>
+      ${beneficialOwnerExtra}
+      <div class="mini-question"><strong>Komplex eller svåröverskådlig ägarstruktur?</strong><div class="choice-row compact">${kycRadio('complexOwnership','no','Nej',phaseTwo.complexOwnership)}${kycRadio('complexOwnership','yes','Ja',phaseTwo.complexOwnership)}</div></div>
+      ${phaseTwo.complexOwnership==='yes'?`<div class="alert-box warning">🟡 Komplex ägarstruktur läggs automatiskt till som riskindikator.</div>`:''}
+    </div></section>
+
+    <section class="phase-block"><div class="phase-number">03</div><div>
+      <h3>Verksamhet och affärsförbindelse</h3>
+      ${kycCheck('businessUnderstood','Verksamheten och affärsförbindelsen är tillräckligt förstådda',phaseTwo.businessUnderstood)}
+      <div class="phase1-context"><span><small>Företagsform · från Fas 1</small><strong>${safe(p1.type)}</strong></span><span><small>Byråns uppdrag · från Fas 1</small><strong>${safe(p1.selectedServices)}</strong></span><span><small>Omsättning · från Fas 1</small><strong>${safe(p1.turnover)}</strong></span></div>
+      <div class="field-grid three kyc-fields">${kycTextField('businessDescription','Verksamhet',phaseTwo.businessDescription,'Kort beskrivning')}${kycTextField('revenueModel','Huvudsakliga intäkter',phaseTwo.revenueModel,'Hur får företaget sina intäkter?')}${kycTextField('expectedTransactions','Normala transaktioner',phaseTwo.expectedTransactions,'Kort beskrivning')}</div>
+    </div></section>
+
+    <section class="phase-block"><div class="phase-number">04</div><div>
+      <h3>PEP, sanktioner och geografi</h3>
+      <div class="kyc-control-row"><div>${kycCheck('pepCheckCompleted','PEP/RCA-kontroll genomförd',phaseTwo.pepCheckCompleted)}</div><div class="choice-row compact">${kycRadio('pepResult','none','Ingen träff',phaseTwo.pepResult)}${kycRadio('pepResult','hit','Träff/möjlig träff',phaseTwo.pepResult)}</div></div>
+      ${pepFollowup}
+      <div class="kyc-control-row"><div>${kycCheck('sanctionsCheckCompleted','Sanktionskontroll genomförd',phaseTwo.sanctionsCheckCompleted)}</div><div class="choice-row compact">${kycRadio('sanctionsResult','none','Ingen träff',phaseTwo.sanctionsResult)}${kycRadio('sanctionsResult','hit','Möjlig/bekräftad träff',phaseTwo.sanctionsResult)}</div></div>
+      ${sanctionsFollowup}
+      <div class="mini-question"><strong>Finns relevant koppling till högriskland eller annan tydlig geografisk risk?</strong><div class="choice-row">${kycRadio('geographicRisk','no','Nej',phaseTwo.geographicRisk)}${kycRadio('geographicRisk','yes','Ja',phaseTwo.geographicRisk)}${kycRadio('geographicRisk','unsure','Osäkert',phaseTwo.geographicRisk)}</div></div>
+    </div></section>
+
+    <section class="phase-block"><div class="phase-number">05</div><div>
+      <h3>Riskbedömning</h3>
+      <p class="block-help">Riskindikatorerna är stöd. Du gör alltid den slutliga riskbedömningen.</p>
+      <div class="risk-list">${riskHtml}</div>
+      <div class="mini-question"><strong>Risknivå</strong><div class="choice-row">${kycRadio('riskLevel','low','Låg',phaseTwo.riskLevel)}${kycRadio('riskLevel','normal','Normal',phaseTwo.riskLevel)}${kycRadio('riskLevel','high','Förhöjd',phaseTwo.riskLevel)}</div></div>
+      <div class="kyc-single-field">${kycTextField('riskReason','Kort motivering',phaseTwo.riskReason,'Motivera bedömningen kort')}</div>
+    </div></section>
+
+    ${enhancedHtml}
+
+    <section class="phase-block"><div class="phase-number">07</div><div>
+      <h3>Kundkännedom och kundaccept</h3>
+      <div class="mini-question"><strong>Är kundkännedomen tillräcklig?</strong><div class="choice-row">${kycRadio('kycSufficient','yes','Ja',phaseTwo.kycSufficient)}${kycRadio('kycSufficient','no','Nej',phaseTwo.kycSufficient)}${kycRadio('kycSufficient','review','Ytterligare utredning krävs',phaseTwo.kycSufficient)}</div></div>
+      ${phaseTwo.kycSufficient==='review'?`<div class="conditional-block">${kycTextField('remainingInvestigation','Vad återstår?',phaseTwo.remainingInvestigation,'Kort beskrivning')}</div>`:''}
+      ${phaseTwo.kycSufficient==='no'?`<div class="alert-box danger">🔴 Kunden kan inte markeras som accepterad innan kundkännedomen är tillräcklig.</div>`:''}
+      <div class="mini-question"><strong>Kundaccept</strong><div class="choice-row">${kycRadio('acceptanceDecision','accept','Kunden accepteras',phaseTwo.acceptanceDecision,!acceptance.allowed)}${kycRadio('acceptanceDecision','decline','Kunden accepteras inte',phaseTwo.acceptanceDecision)}${kycRadio('acceptanceDecision','pending','Beslut avvaktar',phaseTwo.acceptanceDecision)}</div></div>
+      ${acceptanceWarning}
+      ${enhancedRequired && !Object.values(phaseTwo.enhancedMeasures).every(Boolean)?`<div class="alert-box warning">🟡 Skärpta åtgärder är aktuella. Kontrollera att relevanta åtgärder ovan är genomförda innan slutligt beslut.</div>`:''}
+    </div></section>
+
+    <section class="phase-summary"><div class="page-eyebrow">Fas 2 · Sammanfattning</div><h3>Sammanfattning</h3>
+      <div class="summary-grid">
+        <span>Identitet</span><strong>${phaseTwo.identityVerified?'🟢 Verifierad':'⚪ Inte klar'}</strong>
+        <span>Verklig huvudman</span><strong>${phaseTwo.beneficialOwnerStatus==='identified'?'🟢 Identifierad':phaseTwo.beneficialOwnerStatus==='none'?'🟢 Ingen identifierad':phaseTwo.beneficialOwnerStatus==='unknown'?'🟡 Ytterligare utredning':'⚪ Inte bedömd'}</strong>
+        <span>PEP</span><strong>${phaseTwo.pepResult==='none'?'🟢 Ingen träff':phaseTwo.pepResult==='hit'?'🟡 Träff/möjlig träff':'⚪ Inte klart'}</strong>
+        <span>Sanktioner</span><strong>${phaseTwo.sanctionsResult==='none'?'🟢 Ingen träff':phaseTwo.sanctionsResult==='hit'?'🔴 Kräver bedömning':'⚪ Inte klart'}</strong>
+        <span>Risknivå</span><strong>${phaseTwo.riskLevel==='low'?'Låg':phaseTwo.riskLevel==='normal'?'Normal':phaseTwo.riskLevel==='high'?'Förhöjd':'–'}</strong>
+        <span>Kundkännedom</span><strong>${phaseTwo.kycSufficient==='yes'?'🟢 Tillräcklig':phaseTwo.kycSufficient==='no'?'🔴 Otillräcklig':phaseTwo.kycSufficient==='review'?'🟡 Ytterligare utredning':'–'}</strong>
+        <span>Kundaccept</span><strong>${phaseTwo.acceptanceDecision==='accept' && acceptance.allowed?'Accepterad':phaseTwo.acceptanceDecision==='decline'?'Accepteras inte':phaseTwo.acceptanceDecision==='pending'?'Avvaktar':'–'}</strong>
+      </div>
+    </section>`;
+
+  return page;
+}
+
+function bindPhaseTwoEvents(){
+  const page = document.getElementById('page-kundkannedom');
+  if(!page) return;
+
+  page.querySelectorAll('[data-p2-check]').forEach(el=>el.addEventListener('change', ()=>{
+    phaseTwo[el.dataset.p2Check] = el.checked;
+    savePhaseTwo(); renderMain(); renderSidebar();
+  }));
+
+  page.querySelectorAll('[data-p2-field]').forEach(el=>el.addEventListener('change', ()=>{
+    phaseTwo[el.dataset.p2Field] = el.value;
+    // Om ett tidigare val gör kundaccept ogiltig tas det gamla acceptbeslutet bort.
+    if(phaseTwo.acceptanceDecision === 'accept' && !canAcceptCustomer().allowed) phaseTwo.acceptanceDecision = '';
+    savePhaseTwo(); renderMain(); renderSidebar();
+  }));
+
+  page.querySelectorAll('[data-p2-text]').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      phaseTwo[el.dataset.p2Text] = el.value;
+      savePhaseTwo();
+    });
+    // Uppdatera progress/sammanfattning när användaren lämnar fältet, utan att störa skrivandet.
+    el.addEventListener('change', ()=>{ renderMain(); renderSidebar(); });
+  });
+
+  page.querySelectorAll('[data-p2-enhanced]').forEach(el=>el.addEventListener('change', ()=>{
+    phaseTwo.enhancedMeasures[el.dataset.p2Enhanced] = el.checked;
+    savePhaseTwo(); renderMain(); renderSidebar();
+  }));
+}
+
+
 /* ============ APP STATE ============ */
 let customers = [];          // [{id, name, createdAt, lastTab}]
 let activeCustomerId = null; // id of the currently open customer, or null
 let state = {};              // checklist state for fas 2–12: { sectionId: [bool,...] }
 let phaseOne = blankPhaseOne(); // strukturerad data för Fas 1
+let phaseTwo = blankPhaseTwo(); // strukturerad, villkorsstyrd data för Fas 2
 let view = 'customers';      // 'customers' | 'checklist'
 let activeId = SECTIONS[0].id;
 
@@ -757,9 +1068,14 @@ function overallPctOf(s){
 }
 function sectionPct(section){
   if(section.id === 'kontakt'){ const c = phaseOneCounts(); return Math.round((c.done/c.total)*100); }
+  if(section.id === 'kundkannedom'){ const c = phaseTwoCounts(); return Math.round((c.done/c.total)*100); }
   return sectionPctOf(state, section);
 }
-function sectionCounts(section){ return section.id === 'kontakt' ? phaseOneCounts() : sectionCountsOf(state, section); }
+function sectionCounts(section){
+  if(section.id === 'kontakt') return phaseOneCounts();
+  if(section.id === 'kundkannedom') return phaseTwoCounts();
+  return sectionCountsOf(state, section);
+}
 function overallPct(){
   let done=0,total=0;
   SECTIONS.forEach(sec=>{ const c=sectionCounts(sec); done+=c.done; total+=c.total; });
@@ -818,9 +1134,10 @@ function setSaveStatus(text){
 function getCustomerOverallPct(customerId){
   const customerState = loadStateFor(customerId);
   const customerPhaseOne = loadPhaseOneFor(customerId);
+  const customerPhaseTwo = loadPhaseTwoFor(customerId);
   let done=0,total=0;
   SECTIONS.forEach(sec=>{
-    const c = sec.id === 'kontakt' ? phaseOneCountsOf(customerPhaseOne) : sectionCountsOf(customerState, sec);
+    const c = sec.id === 'kontakt' ? phaseOneCountsOf(customerPhaseOne) : sec.id === 'kundkannedom' ? phaseTwoCountsOf(customerPhaseTwo) : sectionCountsOf(customerState, sec);
     done += c.done; total += c.total;
   });
   return total===0 ? 0 : Math.round((done/total)*100);
@@ -845,6 +1162,7 @@ function openCustomer(id){
   try{ localStorage.setItem(ACTIVE_CUSTOMER_KEY, id); }catch(e){}
   state = loadStateFor(id);
   phaseOne = loadPhaseOneFor(id);
+  phaseTwo = loadPhaseTwoFor(id);
   view = 'checklist';
   activeId = c.lastTab || SECTIONS[0].id;
   fullRender();
@@ -854,7 +1172,7 @@ function deleteCustomer(id){
   if(!c) return;
   if(!confirm(`Ta bort kundprofilen "${c.name}" och all dess checklistdata? Detta går inte att ångra.`)) return;
   customers = customers.filter(x=>x.id!==id);
-  try{ localStorage.removeItem(stateKeyFor(id)); localStorage.removeItem(phaseOneKeyFor(id)); }catch(e){}
+  try{ localStorage.removeItem(stateKeyFor(id)); localStorage.removeItem(phaseOneKeyFor(id)); localStorage.removeItem(phaseTwoKeyFor(id)); }catch(e){}
   saveCustomers();
   if(activeCustomerId===id){
     activeCustomerId = null;
@@ -1041,7 +1359,7 @@ function renderCustomersPage(){
     <h2>Kundprofiler</h2>
     <p class="syfte">Lägg till en ny kund för att starta en onboarding, eller öppna en befintlig kundprofil för att fortsätta där du var.</p>
     <form class="add-client-form" id="add-client-form">
-      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Företag AB" autocomplete="off">
+      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Acme AB" autocomplete="off">
       <button type="submit">Lägg till kund</button>
     </form>
     <div id="client-list">${listHtml}</div>
@@ -1082,8 +1400,8 @@ function renderMain(){
 
   // view === 'checklist'
   SECTIONS.forEach(s=>{
-    // Fas 1 har formulär + regelverkslogik. Fas 2–12 använder den ursprungliga checklist-renderaren.
-    const page = s.id === 'kontakt' ? renderPhaseOnePage() : renderSectionPage(s);
+    // Fas 1 och Fas 2 har egna, villkorsstyrda formulär. Fas 3–12 använder den ursprungliga checklist-renderaren.
+    const page = s.id === 'kontakt' ? renderPhaseOnePage() : s.id === 'kundkannedom' ? renderPhaseTwoPage() : renderSectionPage(s);
     if(s.id===activeId) page.classList.add('active');
     mainEl.appendChild(page);
   });
@@ -1095,6 +1413,7 @@ function renderMain(){
     cb.addEventListener('change', onToggle);
   });
   bindPhaseOneEvents();
+  bindPhaseTwoEvents();
   mainEl.querySelectorAll('.sum-row').forEach(row=>{
     row.addEventListener('click', ()=> setActive(row.dataset.id));
   });
@@ -1174,8 +1493,10 @@ document.getElementById('reset-btn').addEventListener('click', ()=>{
   if(!confirm(`Nollställa onboardingdata och samtliga bockade punkter för "${c ? c.name : 'kunden'}"? Detta går inte att ångra.`)) return;
   state = blankState();
   phaseOne = blankPhaseOne();
+  phaseTwo = blankPhaseTwo();
   saveState();
   savePhaseOne();
+  savePhaseTwo();
   fullRender();
 });
 
@@ -1186,6 +1507,7 @@ document.getElementById('reset-btn').addEventListener('click', ()=>{
     const c = customers.find(c=>c.id===activeCustomerId);
     state = loadStateFor(activeCustomerId);
     phaseOne = loadPhaseOneFor(activeCustomerId);
+    phaseTwo = loadPhaseTwoFor(activeCustomerId);
     view = 'checklist';
     activeId = c.lastTab || SECTIONS[0].id;
   }else{
