@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Embark</title>
+<title>Onboard · Kundonboarding</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -14,24 +14,28 @@
 
 <aside id="sidebar">
   <div class="brand">
-    <h1>Embark</h1>
-    <div class="brand-subtitle"></div>
+    <h1>Onboard</h1>
+    <div class="brand-subtitle">Kundonboarding</div>
   </div>
-  <button id="client-btn" type="button">
-    <span class="cb-text">
-      <span class="cb-cap" id="client-cap-label">Ingen kund vald</span>
-      <span class="cb-main">
-        <span class="cb-name" id="client-name-label">Välj eller skapa kund</span>
-        <span class="cb-chevron" id="client-action-label">›</span>
-      </span>
-      <span class="cb-progress" id="client-progress" hidden>
-        <span class="cb-progress-meta" id="client-progress-meta"></span>
-        <span class="client-progress-track" aria-hidden="true">
-          <span class="client-progress-fill" id="client-progress-fill"></span>
+  <div id="client-block">
+    <button id="client-btn" type="button">
+      <span class="cb-text">
+        <span class="cb-cap" id="client-cap-label">Ingen kund vald</span>
+        <span class="cb-main">
+          <span class="cb-name" id="client-name-label">Välj eller skapa kund</span>
+        </span>
+        <span class="cb-progress" id="client-progress" hidden>
+          <span class="cb-progress-meta" id="client-progress-meta"></span>
+          <span class="client-progress-track" aria-hidden="true">
+            <span class="client-progress-fill" id="client-progress-fill"></span>
+          </span>
         </span>
       </span>
-    </span>
-  </button>
+    </button>
+    <button id="client-switch-btn" type="button" aria-label="Välj eller skapa kund">
+      <span class="cb-chevron" id="client-action-label">›</span>
+    </button>
+  </div>
   <div class="tabs-heading">Faser</div>
   <nav id="tabs"></nav>
   <div id="sidebar-footer">

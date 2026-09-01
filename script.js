@@ -915,11 +915,22 @@ function makeId(){
 }
 function addCustomer(name){
   const trimmed = name.trim();
-  if(!trimmed) return;
+  if(!trimmed) return false;
+
+  // Namnet normaliseras bara för jämförelsen. Sparat kundnamn behåller användarens skrivsätt efter trimning.
+  const normalized = trimmed.replace(/\s+/g, ' ').toLocaleLowerCase('sv-SE');
+  const duplicate = customers.some(c => String(c.name ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('sv-SE') === normalized);
+  if(duplicate){
+    const warning = document.getElementById('duplicate-client-warning');
+    if(warning) warning.hidden = false;
+    return false;
+  }
+
   const customer = { id: makeId(), name: trimmed, createdAt: new Date().toISOString(), lastTab: SECTIONS[0].id };
   customers.push(customer);
   saveCustomers();
   openCustomer(customer.id);
+  return true;
 }
 
 function validTabId(id){
@@ -959,6 +970,7 @@ function goToCustomerList(){
 /* ============ RENDER: SIDEBAR ============ */
 const tabsEl = document.getElementById('tabs');
 const clientBtn = document.getElementById('client-btn');
+const clientSwitchBtn = document.getElementById('client-switch-btn');
 const clientNameLabel = document.getElementById('client-name-label');
 const clientCapLabel = document.getElementById('client-cap-label');
 const clientActionLabel = document.getElementById('client-action-label');
@@ -975,6 +987,8 @@ function renderClientButton(){
     const phaseIndex = SECTIONS.findIndex(s=>s.id===activeId);
 
     clientBtn.classList.remove('no-client');
+    clientBtn.setAttribute('aria-label', `Öppna ${activeCustomer.name}`);
+    clientSwitchBtn.setAttribute('aria-label', 'Byt kund');
     clientCapLabel.textContent = 'Aktiv kund';
     clientNameLabel.textContent = activeCustomer.name;
     clientActionLabel.textContent = 'Byt ›';
@@ -986,6 +1000,8 @@ function renderClientButton(){
     clientProgressFill.style.background = pctColor(progress);
   }else{
     clientBtn.classList.add('no-client');
+    clientBtn.setAttribute('aria-label', 'Välj eller skapa kund');
+    clientSwitchBtn.setAttribute('aria-label', 'Välj eller skapa kund');
     clientCapLabel.textContent = 'Ingen kund vald';
     clientNameLabel.textContent = 'Välj eller skapa kund';
     clientActionLabel.textContent = '›';
@@ -1196,7 +1212,7 @@ function renderSummaryPage(){
 
   page.innerHTML = `
     <div class="page-eyebrow">Onboarding · Översikt</div>
-    <h2>Sammanfattning${activeCustomer ? ' – '+activeCustomer.name : ''}</h2>
+    <h2>Sammanfattning${activeCustomer ? ' – '+safe(activeCustomer.name) : ''}</h2>
     <p class="syfte">Här ser du hur långt onboardingen av kunden har kommit och vilka av de sex faserna som återstår.</p>
     <div class="summary-hero">
       <div class="big-ring" style="--pct:${op}; --ringcolor:${pctColor(op)}"><span class="num">${op}%</span></div>
@@ -1226,7 +1242,7 @@ function renderCustomersPage(){
         <div class="client-card" data-id="${c.id}">
           <span class="cring" style="--pct:${pct}; --ringcolor:${pctColor(pct)}"><span>${pct}%</span></span>
           <span class="cinfo">
-            <div class="cname">${c.name}</div>
+            <div class="cname">${safe(c.name)}</div>
             <div class="cmeta">Skapad ${dateStr}</div>
           </span>
           <span class="copen">Öppna checklista ›</span>
@@ -1241,8 +1257,9 @@ function renderCustomersPage(){
     <h2>Kundprofiler</h2>
     <p class="syfte">Lägg till en ny kund för att starta en onboarding, eller öppna en befintlig kundprofil för att fortsätta där du var.</p>
     <form class="add-client-form" id="add-client-form">
-      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Acme AB" autocomplete="off">
+      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Företag AB" autocomplete="off">
       <button type="submit">Lägg till kund</button>
+      <div id="duplicate-client-warning" class="alert-box warning client-duplicate-warning" role="alert" hidden>Kunden finns redan. Öppna den befintliga kundprofilen i listan nedan.</div>
     </form>
     <div id="client-list">${listHtml}</div>
   `;
@@ -1262,8 +1279,11 @@ function renderMain(){
     document.getElementById('add-client-form').addEventListener('submit', (e)=>{
       e.preventDefault();
       const input = document.getElementById('new-client-name');
-      addCustomer(input.value);
-      input.value = "";
+      if(addCustomer(input.value)) input.value = "";
+    });
+    document.getElementById('new-client-name').addEventListener('input', ()=>{
+      const warning = document.getElementById('duplicate-client-warning');
+      if(warning) warning.hidden = true;
     });
     mainEl.querySelectorAll('.client-card').forEach(card=>{
       card.addEventListener('click', (e)=>{
@@ -1349,12 +1369,19 @@ function refreshChecklistUI(){
 }
 
 function setActive(id){
-  activeId = id;
+  activeId = validTabId(id);
   const c = customers.find(x=>x.id===activeCustomerId);
-  if(c){ c.lastTab = id; saveCustomers(); }
-  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.id===id));
+  if(c){ c.lastTab = activeId; saveCustomers(); }
+
+  // Fasnavigation ska fungera även när Kundprofiler-vyn är renderad.
+  if(view !== 'checklist'){
+    view = 'checklist';
+    renderMain();
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.id===activeId));
   document.querySelectorAll('.page').forEach(p=> p.classList.remove('active'));
-  const target = document.getElementById('page-'+id);
+  const target = document.getElementById('page-'+activeId);
   if(target) target.classList.add('active');
   renderClientButton();
   mainEl.scrollTop = 0;
@@ -1368,7 +1395,11 @@ function fullRender(){
 }
 
 /* ============ EVENTS ============ */
-clientBtn.addEventListener('click', goToCustomerList);
+clientBtn.addEventListener('click', ()=>{
+  if(activeCustomerId) openCustomer(activeCustomerId);
+  else goToCustomerList();
+});
+clientSwitchBtn.addEventListener('click', goToCustomerList);
 
 document.getElementById('reset-btn').addEventListener('click', ()=>{
   if(!activeCustomerId) return;
