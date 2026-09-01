@@ -960,16 +960,38 @@ function goToCustomerList(){
 const tabsEl = document.getElementById('tabs');
 const clientBtn = document.getElementById('client-btn');
 const clientNameLabel = document.getElementById('client-name-label');
+const clientCapLabel = document.getElementById('client-cap-label');
+const clientActionLabel = document.getElementById('client-action-label');
+const clientProgress = document.getElementById('client-progress');
+const clientProgressMeta = document.getElementById('client-progress-meta');
+const clientProgressFill = document.getElementById('client-progress-fill');
 const checkSvg = `<svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#F1ECDD" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
+/* Kundblocket återanvänder befintlig fas- och progressionslogik. */
 function renderClientButton(){
   const activeCustomer = customers.find(c=>c.id===activeCustomerId);
   if(activeCustomer){
+    const progress = overallPct();
+    const phaseIndex = SECTIONS.findIndex(s=>s.id===activeId);
+
     clientBtn.classList.remove('no-client');
+    clientCapLabel.textContent = 'Aktiv kund';
     clientNameLabel.textContent = activeCustomer.name;
+    clientActionLabel.textContent = 'Byt ›';
+    clientProgress.hidden = false;
+    clientProgressMeta.textContent = view !== 'checklist' || activeId === 'summary' || phaseIndex < 0
+      ? `${progress} % klart`
+      : `Fas ${phaseIndex + 1} av ${SECTIONS.length} · ${progress} % klart`;
+    clientProgressFill.style.width = progress + '%';
+    clientProgressFill.style.background = pctColor(progress);
   }else{
     clientBtn.classList.add('no-client');
-    clientNameLabel.textContent = "Ingen kund vald";
+    clientCapLabel.textContent = 'Ingen kund vald';
+    clientNameLabel.textContent = 'Välj eller skapa kund';
+    clientActionLabel.textContent = '›';
+    clientProgress.hidden = true;
+    clientProgressMeta.textContent = '';
+    clientProgressFill.style.width = '0%';
   }
 }
 
@@ -1334,6 +1356,7 @@ function setActive(id){
   document.querySelectorAll('.page').forEach(p=> p.classList.remove('active'));
   const target = document.getElementById('page-'+id);
   if(target) target.classList.add('active');
+  renderClientButton();
   mainEl.scrollTop = 0;
 }
 
