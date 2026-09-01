@@ -1348,7 +1348,7 @@ function renderCustomersPage(){
     <h2>Kundprofiler</h2>
     <p class="syfte">Lägg till en ny kund för att starta en onboarding, eller öppna en befintlig kundprofil för att fortsätta där du var.</p>
     <form class="add-client-form" id="add-client-form">
-      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Acme AB" autocomplete="off">
+      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Företag AB" autocomplete="off">
       <button type="submit">Lägg till kund</button>
       <div id="duplicate-client-warning" class="alert-box warning client-duplicate-warning" role="alert" hidden>Kunden finns redan. Öppna den befintliga kundprofilen i listan nedan.</div>
     </form>
