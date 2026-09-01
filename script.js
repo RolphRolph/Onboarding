@@ -115,6 +115,27 @@ const stateKeyFor = (customerId) => "onboarding-state-v1-" + customerId;
 const PHASE1_KEY_PREFIX = "onboarding-phase1-v1-";
 const phaseOneKeyFor = (customerId) => PHASE1_KEY_PREFIX + customerId;
 
+/* Intervallen ligger samlade här så att Fas 1-reglerna kan använda samma gränser
+   utan att lagra eller visa påhittade exakta belopp. */
+const TURNOVER_RANGES = [
+  {value:'turnover_upto_1m', label:'Upp till 1 mkr', minExclusive:null, max:1000000},
+  {value:'turnover_1m_3m', label:'Över 1 mkr – 3 mkr', minExclusive:1000000, max:3000000},
+  {value:'turnover_3m_40m', label:'Över 3 mkr – 40 mkr', minExclusive:3000000, max:40000000},
+  {value:'turnover_40m_80m', label:'Över 40 mkr – 80 mkr', minExclusive:40000000, max:80000000},
+  {value:'turnover_over_80m', label:'Över 80 mkr', minExclusive:80000000, max:null}
+];
+const BALANCE_RANGES = [
+  {value:'balance_upto_1_5m', label:'Upp till 1,5 mkr', minExclusive:null, max:1500000},
+  {value:'balance_1_5m_40m', label:'Över 1,5 mkr – 40 mkr', minExclusive:1500000, max:40000000},
+  {value:'balance_over_40m', label:'Över 40 mkr', minExclusive:40000000, max:null}
+];
+const EMPLOYEE_RANGES = [
+  {value:'employees_0_3', label:'0–3', minExclusive:null, max:3},
+  {value:'employees_4_50', label:'4–50', minExclusive:3, max:50},
+  {value:'employees_over_50', label:'Över 50', minExclusive:50, max:null}
+];
+const PHASE1_RANGES = {turnover:TURNOVER_RANGES, balance:BALANCE_RANGES, employees:EMPLOYEE_RANGES};
+
 function blankPhaseOne(){
   return {
     companyType: "",                 // "ab" | "sole"
@@ -182,12 +203,48 @@ function phaseOneScope(){
   return phaseOne.businessStatus === 'new' ? phaseOne.expected : phaseOne.latest;
 }
 
+function getRangeDefinition(type, value){
+  return (PHASE1_RANGES[type] || []).find(range => range.value === value) || null;
+}
+
+/* Äldre kunder kan ha exakta numeriska värden sparade. De klassificeras vid läsning/användning
+   men localStorage skrivs inte om förrän användaren själv ändrar ett dropdown-val. */
+function classifyLegacyRangeValue(type, value){
+  if(value === '' || value === null || value === undefined) return '';
+  if(getRangeDefinition(type, value)) return value;
+  const n = toNumber(value);
+  if(n === null) return '';
+  const match = (PHASE1_RANGES[type] || []).find(range =>
+    (range.minExclusive === null || n > range.minExclusive) &&
+    (range.max === null || n <= range.max)
+  );
+  return match ? match.value : '';
+}
+
+function hasRangeValue(type, value){
+  return !!classifyLegacyRangeValue(type, value);
+}
+
+function getRangeLabel(type, value){
+  const normalized = classifyLegacyRangeValue(type, value);
+  const range = getRangeDefinition(type, normalized);
+  return range ? range.label : '';
+}
+
+/* Gränserna ligger exakt mellan intervallen. Därför kan varje regel avgöras entydigt
+   utan att anta ett exakt belopp inne i intervallet. */
+function rangeExceedsThreshold(type, value, threshold){
+  const range = getRangeDefinition(type, classifyLegacyRangeValue(type, value));
+  if(!range) return null;
+  return range.minExclusive !== null && range.minExclusive >= threshold;
+}
+
 function hasCompleteHistoricalData(){
-  return ['turnover','balance','employees'].every(k => toNumber(phaseOne.latest[k]) !== null && toNumber(phaseOne.previous[k]) !== null);
+  return ['turnover','balance','employees'].every(k => hasRangeValue(k, phaseOne.latest[k]) && hasRangeValue(k, phaseOne.previous[k]));
 }
 
 function countExceeded(year, limits){
-  return Object.keys(limits).reduce((count, key) => count + (toNumber(year[key]) > limits[key] ? 1 : 0), 0);
+  return Object.keys(limits).reduce((count, key) => count + (rangeExceedsThreshold(key, year[key], limits[key]) === true ? 1 : 0), 0);
 }
 
 /* Separata logikfunktioner enligt Fas 1-prompten. De använder samma grunddata. */
@@ -223,18 +280,48 @@ function calculateLargeCompanyStatus(){
   };
 }
 
+function calculateK1Eligibility(){
+  if(phaseOne.companyType !== 'sole') return {visible:false, status:'na', label:'Inte aktuellt', detail:'K1-stödet gäller här endast enskild näringsverksamhet.'};
+  if(!phaseOne.businessStatus) return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange verksamhetens status och nettoomsättning för att få K1-stöd.'};
+
+  if(phaseOne.businessStatus === 'new'){
+    const turnover = phaseOne.expected.turnover;
+    if(!hasRangeValue('turnover', turnover)) return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange förväntad nettoomsättning för att få K1-stöd.'};
+    const overThree = rangeExceedsThreshold('turnover', turnover, 3000000);
+    return overThree
+      ? {visible:true, status:'blocked', label:'Inte möjligt utifrån angiven omsättning', detail:'K1 är inte möjligt utifrån angiven förväntad nettoomsättning över 3 mkr.'}
+      : {visible:true, status:'possible', label:'Kan vara möjligt', detail:'Den förväntade nettoomsättningen ligger inom K1:s omsättningsgräns på högst 3 mkr. Övriga förutsättningar behöver också vara uppfyllda.'};
+  }
+
+  const latest = phaseOne.latest.turnover;
+  const previous = phaseOne.previous.turnover;
+  if(!hasRangeValue('turnover', latest) || !hasRangeValue('turnover', previous)){
+    return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange nettoomsättning för båda räkenskapsåren för att få K1-stöd.'};
+  }
+  const latestOver = rangeExceedsThreshold('turnover', latest, 3000000);
+  const previousOver = rangeExceedsThreshold('turnover', previous, 3000000);
+  if(!latestOver && !previousOver){
+    return {visible:true, status:'possible', label:'Kan vara möjligt', detail:'Nettoomsättningen ligger på högst 3 mkr under båda angivna räkenskapsåren. Övriga förutsättningar behöver också vara uppfyllda.'};
+  }
+  if(latestOver !== previousOver){
+    return {visible:true, status:'review', label:'Kräver bedömning', detail:'Nettoomsättningen överstiger 3 mkr under ett av de två åren. K1 bygger på att nettoomsättningen normalt uppgår till högst 3 mkr. Ett enstaka överskridande behöver därför bedömas.'};
+  }
+  return {visible:true, status:'review', label:'Sannolikt inte tillämpligt – kontrollera bedömningen', detail:'Nettoomsättningen överstiger 3 mkr under båda angivna räkenskapsåren.'};
+}
+
 function getAvailableKRules(){
   const large = calculateLargeCompanyStatus();
   if(phaseOne.companyType === 'ab'){
     return [
-      {value:'K1', state:'disabled', note:'Ej tillämpligt för aktiebolag'},
+      {value:'K1', state:'disabled', disabled:true, note:'Ej tillämpligt för aktiebolag'},
       {value:'K2', state: large.status === 'blocked' ? 'review' : 'possible', note: large.status === 'blocked' ? 'Kräver ytterligare bedömning utifrån företagets storlek och övriga förutsättningar' : 'Kan vara möjligt'},
       {value:'K3', state:'possible', note:'Kan vara möjligt'}
     ];
   }
   if(phaseOne.companyType === 'sole'){
+    const k1 = calculateK1Eligibility();
     return [
-      {value:'K1', state:'possible', note:'Kan vara relevant för enskild näringsverksamhet om övriga krav är uppfyllda'},
+      {value:'K1', state:k1.status, disabled:k1.status === 'blocked', note:k1.status === 'possible' ? k1.label : `${k1.label}. ${k1.detail}`},
       {value:'K2', state:'review', note:'Kräver bedömning av tillämplighet'},
       {value:'K3', state:'review', note:'Kräver bedömning av tillämplighet'}
     ];
@@ -243,9 +330,9 @@ function getAvailableKRules(){
 }
 
 function getAvailableAccountingMethods(){
-  const turnover = toNumber(phaseOneScope().turnover);
-  if(turnover === null) return {status:'review', message:'Ange nettoomsättning för att få stöd om bokföringsmetod.', options:[{value:'cash',label:'Kontantmetoden',disabled:true},{value:'invoice',label:'Faktureringsmetoden',disabled:false}]};
-  const cashPossible = turnover <= 3000000;
+  const turnover = phaseOneScope().turnover;
+  if(!hasRangeValue('turnover', turnover)) return {status:'review', message:'Ange nettoomsättning för att få stöd om bokföringsmetod.', options:[{value:'cash',label:'Kontantmetoden',disabled:true},{value:'invoice',label:'Faktureringsmetoden',disabled:false}]};
+  const cashPossible = rangeExceedsThreshold('turnover', turnover, 3000000) === false;
   return {
     status: cashPossible ? 'possible' : 'blocked',
     message: cashPossible ? 'Kontantmetoden kan vara möjlig' : 'Kontantmetoden är inte möjlig utifrån angiven nettoomsättning',
@@ -255,11 +342,11 @@ function getAvailableAccountingMethods(){
 
 function getAvailableVatPeriods(){
   if(!phaseOne.services.includes('vat')) return {visible:false, options:[]};
-  const turnover = toNumber(phaseOneScope().turnover);
-  if(turnover === null) return {visible:true, status:'review', message:'Ange nettoomsättning för att se möjliga momsperioder.', options:[]};
+  const turnover = phaseOneScope().turnover;
+  if(!hasRangeValue('turnover', turnover)) return {visible:true, status:'review', message:'Ange nettoomsättning för att se möjliga momsperioder.', options:[]};
   const options = [
-    {value:'year', label:'År', disabled:turnover > 1000000},
-    {value:'quarter', label:'Kvartal', disabled:turnover > 40000000},
+    {value:'year', label:'År', disabled:rangeExceedsThreshold('turnover', turnover, 1000000) === true},
+    {value:'quarter', label:'Kvartal', disabled:rangeExceedsThreshold('turnover', turnover, 40000000) === true},
     {value:'month', label:'Månad', disabled:false}
   ];
   return {visible:true, status:'possible', message:'Välj bland de perioder som är möjliga utifrån angiven omfattning.', options};
@@ -267,11 +354,8 @@ function getAvailableVatPeriods(){
 
 function calculateSimplifiedAnnualReportEligibility(){
   if(phaseOne.companyType !== 'sole') return {visible:false};
-  const turnover = toNumber(phaseOneScope().turnover);
-  if(turnover === null) return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange nettoomsättning för att få stöd.'};
-  /* Prompten anger att omsättningsgränsen ska kontrolleras men anger inte själva gränsvärdet.
-     Därför gör verktyget ingen dold juridisk gissning här. */
-  return {visible:true, status:'review', label:'Kräver bedömning', detail:`Angiven nettoomsättning är ${formatMoney(turnover)}. Underlaget specificerar inte gränsvärdet för förenklat årsbokslut, så den slutliga kontrollen lämnas till användaren.`};
+  const k1 = calculateK1Eligibility();
+  return {visible:true, status:k1.status, label:k1.label, detail:k1.detail};
 }
 
 function phaseOneCountsOf(data){
@@ -280,8 +364,8 @@ function phaseOneCountsOf(data){
   const status = !!p.businessStatus;
   const services = p.services.length > 0;
   const scope = p.businessStatus === 'existing'
-    ? ['turnover','balance','employees'].every(k => toNumber(p.latest[k]) !== null && toNumber(p.previous[k]) !== null)
-    : ['turnover','balance','employees'].some(k => toNumber(p.expected[k]) !== null);
+    ? ['turnover','balance','employees'].every(k => hasRangeValue(k, p.latest[k]) && hasRangeValue(k, p.previous[k]))
+    : ['turnover','balance','employees'].some(k => hasRangeValue(k, p.expected[k]));
 
   // Registreringar räknas som en kompakt del. Moms/arbetsgivare krävs bara när uppdraget gör dem relevanta.
   const registrationChecks = [!!p.fTaxRegistered];
@@ -313,8 +397,15 @@ function compactYesNo(name, label, value){
   return `<div class="compact-choice-line"><span>${label}</span><div class="choice-row compact">${radioCard(name,'yes','Ja',value==='yes')}${radioCard(name,'no','Nej',value==='no')}</div></div>`;
 }
 
-function numberField(path, label, value){
-  return `<label class="field"><span>${label}</span><input type="number" min="0" step="any" inputmode="decimal" data-p1-path="${path}" value="${safe(value)}" placeholder="0"></label>`;
+function rangeOptions(type, value){
+  const selected = classifyLegacyRangeValue(type, value);
+  return `<option value="">Välj intervall</option>` + (PHASE1_RANGES[type] || []).map(range =>
+    `<option value="${range.value}" ${selected===range.value?'selected':''}>${safe(range.label)}</option>`
+  ).join('');
+}
+
+function rangeField(path, label, type, value){
+  return `<label class="field"><span>${label}</span><select data-p1-path="${path}">${rangeOptions(type, value)}</select></label>`;
 }
 
 function renderRuleCard(title, result, detailsLabel='Visa beräkning'){
@@ -345,22 +436,22 @@ function renderPhaseOnePage(){
 
   const historical = `<div class="scope-table">
     <div class="scope-head"></div><div class="scope-head">Senaste räkenskapsår</div><div class="scope-head">Föregående räkenskapsår</div>
-    <div class="scope-label">Nettoomsättning</div><input type="number" min="0" data-p1-path="latest.turnover" value="${safe(phaseOne.latest.turnover)}" placeholder="kr"><input type="number" min="0" data-p1-path="previous.turnover" value="${safe(phaseOne.previous.turnover)}" placeholder="kr">
-    <div class="scope-label">Balansomslutning</div><input type="number" min="0" data-p1-path="latest.balance" value="${safe(phaseOne.latest.balance)}" placeholder="kr"><input type="number" min="0" data-p1-path="previous.balance" value="${safe(phaseOne.previous.balance)}" placeholder="kr">
-    <div class="scope-label">Medelantal anställda</div><input type="number" min="0" step="any" data-p1-path="latest.employees" value="${safe(phaseOne.latest.employees)}" placeholder="antal"><input type="number" min="0" step="any" data-p1-path="previous.employees" value="${safe(phaseOne.previous.employees)}" placeholder="antal">
+    <div class="scope-label">Nettoomsättning</div><select data-p1-path="latest.turnover">${rangeOptions('turnover',phaseOne.latest.turnover)}</select><select data-p1-path="previous.turnover">${rangeOptions('turnover',phaseOne.previous.turnover)}</select>
+    <div class="scope-label">Balansomslutning</div><select data-p1-path="latest.balance">${rangeOptions('balance',phaseOne.latest.balance)}</select><select data-p1-path="previous.balance">${rangeOptions('balance',phaseOne.previous.balance)}</select>
+    <div class="scope-label">Medelantal anställda</div><select data-p1-path="latest.employees">${rangeOptions('employees',phaseOne.latest.employees)}</select><select data-p1-path="previous.employees">${rangeOptions('employees',phaseOne.previous.employees)}</select>
   </div>`;
 
   const expected = `<div class="field-grid three">
-    ${numberField('expected.turnover','Förväntad nettoomsättning',phaseOne.expected.turnover)}
-    ${numberField('expected.balance','Förväntad balansomslutning',phaseOne.expected.balance)}
-    ${numberField('expected.employees','Förväntat antal anställda',phaseOne.expected.employees)}
+    ${rangeField('expected.turnover','Förväntad nettoomsättning','turnover',phaseOne.expected.turnover)}
+    ${rangeField('expected.balance','Förväntad balansomslutning','balance',phaseOne.expected.balance)}
+    ${rangeField('expected.employees','Förväntat antal anställda','employees',phaseOne.expected.employees)}
   </div>`;
 
   const kHtml = kRules.map(r => {
-    const disabled = r.state === 'disabled';
+    const disabled = r.disabled === true || r.state === 'disabled';
     return `<label class="rule-option ${disabled ? 'is-disabled' : ''} status-${r.state}">
       <input type="radio" name="kRule" data-p1-choice="kRule" value="${r.value}" ${phaseOne.choices.kRule===r.value?'checked':''} ${disabled?'disabled':''}>
-      <span><strong>${r.value}</strong><small>${statusIcon(r.state)} ${r.note}</small></span>
+      <span><strong>${r.value}</strong><small>${statusIcon(r.state)} ${safe(r.note)}</small></span>
     </label>`;
   }).join('');
 
@@ -368,7 +459,7 @@ function renderPhaseOnePage(){
   const vatOptions = vat.options.map(o => `<label class="rule-option ${o.disabled?'is-disabled':''}"><input type="radio" name="vatPeriod" data-p1-choice="vatPeriod" value="${o.value}" ${phaseOne.choices.vatPeriod===o.value?'checked':''} ${o.disabled?'disabled':''}><span><strong>${o.label}</strong></span></label>`).join('');
 
   const selectedServices = services.filter(([v])=>phaseOne.services.includes(v)).map(([,l])=>l).join(', ') || '–';
-  const kAvailable = kRules.filter(r=>r.state!=='disabled').map(r=>r.value).join(' / ') || '–';
+  const kAvailable = kRules.filter(r=>r.state!=='disabled' && !r.disabled).map(r=>r.value).join(' / ') || '–';
   const methodAvailable = accounting.options.filter(o=>!o.disabled).map(o=>o.label).join(' / ') || '–';
   const vatAvailable = vat.visible ? (vat.options.filter(o=>!o.disabled).map(o=>o.label).join(' / ') || 'Kan inte bedömas ännu') : 'Inte aktuellt';
 
@@ -597,8 +688,8 @@ function phaseOneContextForKyc(){
   const type = phaseOne.companyType === 'ab' ? 'Aktiebolag' : phaseOne.companyType === 'sole' ? 'Enskild näringsverksamhet' : 'Inte angivet';
   const selectedServices = services.filter(([v])=>phaseOne.services.includes(v)).map(([,l])=>l).join(', ') || 'Inte angivet';
   const scope = phaseOneScope();
-  const turnover = toNumber(scope.turnover);
-  return {type, selectedServices, turnover: turnover === null ? 'Inte angivet' : formatMoney(turnover)};
+  const turnover = getRangeLabel('turnover', scope.turnover);
+  return {type, selectedServices, turnover: turnover || 'Inte angivet'};
 }
 
 function renderPhaseTwoPage(){
@@ -1257,7 +1348,7 @@ function renderCustomersPage(){
     <h2>Kundprofiler</h2>
     <p class="syfte">Lägg till en ny kund för att starta en onboarding, eller öppna en befintlig kundprofil för att fortsätta där du var.</p>
     <form class="add-client-form" id="add-client-form">
-      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Företag AB" autocomplete="off">
+      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Acme AB" autocomplete="off">
       <button type="submit">Lägg till kund</button>
       <div id="duplicate-client-warning" class="alert-box warning client-duplicate-warning" role="alert" hidden>Kunden finns redan. Öppna den befintliga kundprofilen i listan nedan.</div>
     </form>

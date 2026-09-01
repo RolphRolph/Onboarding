@@ -435,11 +435,11 @@
   color:#fff; font-size:13px; font-weight:600;
 }
 .field{ display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:var(--text-dim); }
-.field input, .scope-table input{
-  width:100%; border:1px solid var(--line); border-radius:7px; background:#fff;
+.field input, .field select, .scope-table input, .scope-table select{
+  width:100%; min-width:0; border:1px solid var(--line); border-radius:7px; background:#fff;
   color:var(--text-dark); font:inherit; padding:10px 11px;
 }
-.field input:focus, .scope-table input:focus{ outline:2px solid var(--brass-light); outline-offset:1px; border-color:var(--brass); }
+.field input:focus, .field select:focus, .scope-table input:focus, .scope-table select:focus{ outline:2px solid var(--brass-light); outline-offset:1px; border-color:var(--brass); }
 .other-field{ margin-top:12px; max-width:420px; }
 .field-grid.three{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
 .scope-table{
