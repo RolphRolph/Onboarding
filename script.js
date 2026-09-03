@@ -622,12 +622,19 @@ function savePhaseTwo(){
   }
 }
 
+/* Samma villkor styr avsnittet, progressionen och riskstödet utan att radera sparade svar. */
+function isBeneficialOwnerRelevant(p1 = phaseOne){
+  return p1.companyType !== 'sole';
+}
+
 /* Riskindikatorerna är stöd för konsulten. De sätter aldrig risknivån automatiskt. */
-function getKycRiskIndicators(data = phaseTwo){
+function getKycRiskIndicators(data = phaseTwo, p1 = phaseOne){
   const p = ensurePhaseTwo(data);
   const indicators = [];
-  if(p.complexOwnership === 'yes') indicators.push('Komplex ägarstruktur');
-  if(p.beneficialOwnerStatus === 'unknown') indicators.push('Verklig huvudman kan inte fastställas');
+  if(isBeneficialOwnerRelevant(p1)){
+    if(p.complexOwnership === 'yes') indicators.push('Komplex ägarstruktur');
+    if(p.beneficialOwnerStatus === 'unknown') indicators.push('Verklig huvudman kan inte fastställas');
+  }
   if(p.pepResult === 'hit') indicators.push('PEP/RCA-träff eller möjlig träff');
   if(p.sanctionsResult === 'hit') indicators.push('Sanktionsindikator');
   if(p.geographicRisk === 'yes') indicators.push('Geografisk risk');
@@ -648,8 +655,8 @@ function canAcceptCustomer(data = phaseTwo){
 }
 
 /* Samma obligatoriska frågor används i progressen och i listan över det som återstår. */
-function phaseTwoCountsOf(data){
-  return requirementCounts(phaseTwoRequirements(data));
+function phaseTwoCountsOf(data, p1 = phaseOne){
+  return requirementCounts(phaseTwoRequirements(data, p1));
 }
 function phaseTwoCounts(){ return phaseTwoCountsOf(phaseTwo); }
 
@@ -701,6 +708,7 @@ function renderPhaseTwoPage(){
   const enhancedRequired = isEnhancedDueDiligenceRequired();
   const acceptance = canAcceptCustomer();
   const p1 = phaseOneContextForKyc();
+  const showBeneficialOwner = isBeneficialOwnerRelevant();
 
   const beneficialOwnerExtra = phaseTwo.beneficialOwnerStatus === 'identified'
     ? renderSavedText('beneficialOwnerName')
@@ -753,14 +761,14 @@ function renderPhaseTwoPage(){
       ${phaseTwo.representativeStatus==='yes'?`<div class="conditional-block">${kycCheck('representativeChecked','Ombud och behörighet kontrollerade',phaseTwo.representativeChecked)}</div>`:''}
     </div></section>
 
-    <section class="phase-block"><div class="phase-number">02</div><div>
+    ${showBeneficialOwner?`<section class="phase-block"><div class="phase-number">02</div><div>
       <h3>Verklig huvudman</h3>
       ${kycCheck('beneficialOwnerInvestigated','Verklig huvudman och ägar-/kontrollstruktur utredd',phaseTwo.beneficialOwnerInvestigated)}
       <div class="mini-question"><strong>Status</strong><div class="choice-row">${kycRadio('beneficialOwnerStatus','identified','Identifierad',phaseTwo.beneficialOwnerStatus)}${kycRadio('beneficialOwnerStatus','none','Ingen finns',phaseTwo.beneficialOwnerStatus)}${kycRadio('beneficialOwnerStatus','unknown','Går inte att fastställa',phaseTwo.beneficialOwnerStatus)}</div></div>
       ${beneficialOwnerExtra}
       <div class="mini-question"><strong>Komplex eller svåröverskådlig ägarstruktur?</strong><div class="choice-row compact">${kycRadio('complexOwnership','no','Nej',phaseTwo.complexOwnership)}${kycRadio('complexOwnership','yes','Ja',phaseTwo.complexOwnership)}</div></div>
       ${phaseTwo.complexOwnership==='yes'?`<div class="alert-box warning">🟡 Komplex ägarstruktur läggs automatiskt till som riskindikator.</div>`:''}
-    </div></section>
+    </div></section>`:''}
 
     <section class="phase-block"><div class="phase-number">03</div><div>
       <h3>Verksamhet och affärsförbindelse</h3>
@@ -801,7 +809,7 @@ function renderPhaseTwoPage(){
     <section class="phase-summary"><div class="page-eyebrow">Fas 2 · Sammanfattning</div><h3>Sammanfattning</h3>
       <div class="summary-grid">
         <span>Identitet</span><strong>${phaseTwo.identityVerified?'🟢 Verifierad':'⚪ Inte klar'}</strong>
-        <span>Verklig huvudman</span><strong>${phaseTwo.beneficialOwnerStatus==='identified'?'🟢 Identifierad':phaseTwo.beneficialOwnerStatus==='none'?'🟢 Ingen identifierad':phaseTwo.beneficialOwnerStatus==='unknown'?'🟡 Ytterligare utredning':'⚪ Inte bedömd'}</strong>
+        ${showBeneficialOwner?`<span>Verklig huvudman</span><strong>${phaseTwo.beneficialOwnerStatus==='identified'?'🟢 Identifierad':phaseTwo.beneficialOwnerStatus==='none'?'🟢 Ingen identifierad':phaseTwo.beneficialOwnerStatus==='unknown'?'🟡 Ytterligare utredning':'⚪ Inte bedömd'}</strong>`:''}
         <span>PEP</span><strong>${phaseTwo.pepResult==='none'?'🟢 Ingen träff':phaseTwo.pepResult==='hit'?'🟡 Träff/möjlig träff':'⚪ Inte klart'}</strong>
         <span>Sanktioner</span><strong>${phaseTwo.sanctionsResult==='none'?'🟢 Ingen träff':phaseTwo.sanctionsResult==='hit'?'🔴 Kräver bedömning':'⚪ Inte klart'}</strong>
         <span>Risknivå</span><strong>${phaseTwo.riskLevel==='low'?'Låg':phaseTwo.riskLevel==='normal'?'Normal':phaseTwo.riskLevel==='high'?'Förhöjd':'–'}</strong>
@@ -1016,7 +1024,7 @@ function phaseOneRequirements(data){
   return items;
 }
 
-function phaseTwoRequirements(data){
+function phaseTwoRequirements(data, p1 = phaseOne){
   const p = ensurePhaseTwo(data), items = [];
   const add = (key,label,attribute,done)=>items.push({key,label,selector:`[${attribute}="${key}"]`,done:!!done});
   const check = (key,label)=>add(key,label,'data-p2-check',p[key]);
@@ -1027,12 +1035,14 @@ function phaseTwoRequirements(data){
   text('identityDate','Identitetskontroll – kontrolldatum');
   radio('representativeStatus','Finns ombud/fullmakt?');
   if(p.representativeStatus==='yes') check('representativeChecked','Ombud och behörighet kontrollerade');
-  check('beneficialOwnerInvestigated','Verklig huvudman och ägar-/kontrollstruktur utredd');
-  radio('beneficialOwnerStatus','Verklig huvudman – status');
-  if(p.beneficialOwnerStatus==='identified') text('beneficialOwnerName','Namn på verklig huvudman');
-  if(p.beneficialOwnerStatus==='none') text('noBeneficialOwnerReason','Motivering till att verklig huvudman saknas');
-  if(p.beneficialOwnerStatus==='unknown') text('alternativeBeneficialOwner','Alternativ verklig huvudman');
-  radio('complexOwnership','Komplex eller svåröverskådlig ägarstruktur?');
+  if(isBeneficialOwnerRelevant(p1)){
+    check('beneficialOwnerInvestigated','Verklig huvudman och ägar-/kontrollstruktur utredd');
+    radio('beneficialOwnerStatus','Verklig huvudman – status');
+    if(p.beneficialOwnerStatus==='identified') text('beneficialOwnerName','Namn på verklig huvudman');
+    if(p.beneficialOwnerStatus==='none') text('noBeneficialOwnerReason','Motivering till att verklig huvudman saknas');
+    if(p.beneficialOwnerStatus==='unknown') text('alternativeBeneficialOwner','Alternativ verklig huvudman');
+    radio('complexOwnership','Komplex eller svåröverskådlig ägarstruktur?');
+  }
   check('businessUnderstood','Verksamheten och affärsförbindelsen är tillräckligt förstådda');
   text('businessDescription','Verksamhet – kort beskrivning');
   text('revenueModel','Huvudsakliga intäkter');
@@ -1313,7 +1323,7 @@ function getCustomerOverallPct(customerId){
   const customerPhaseTwo = loadPhaseTwoFor(customerId);
   let done=0,total=0;
   SECTIONS.forEach(sec=>{
-    const c = sec.id === 'kontakt' ? phaseOneCountsOf(customerPhaseOne) : sec.id === 'kundkannedom' ? phaseTwoCountsOf(customerPhaseTwo) : sectionCountsOf(customerState, sec, customerPhaseOne);
+    const c = sec.id === 'kontakt' ? phaseOneCountsOf(customerPhaseOne) : sec.id === 'kundkannedom' ? phaseTwoCountsOf(customerPhaseTwo, customerPhaseOne) : sectionCountsOf(customerState, sec, customerPhaseOne);
     done += c.done; total += c.total;
   });
   return total===0 ? 0 : Math.round((done/total)*100);
