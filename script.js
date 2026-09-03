@@ -62,19 +62,13 @@ const SECTIONS = [
       ]},
       {title:"Systemuppsättning", items:[
         {id:"baseSetup", text:"Grundinställningar och kontoplan är korrekt konfigurerade"},
-        {id:"vatSetup", text:"Moms- och skattehantering är korrekt konfigurerad", visibleWhen:"vat"},
         {id:"payrollSetup", text:"Lönesystem och relevanta lönebehörigheter är uppsatta", visibleWhen:"payroll"},
         {id:"paymentFlows", text:"Nödvändiga bank-, faktura- och betalningsflöden är uppsatta", visibleWhen:"bookkeeping"},
         {id:"foreignSetup", text:"Relevant utlandsmoms/OSS eller annan utlandshantering är konfigurerad", visibleWhen:"foreign"},
         {id:"integrations", text:"Nödvändiga integrationer och specialfunktioner är aktiverade och testade"}
       ]},
       {title:"Digital dokumenthantering", items:[
-        {id:"documentStructure", text:"Kundens dokumentstruktur är upprättad enligt byråns standard"},
-        {id:"documentsSaved", text:"Nödvändiga dokument är sparade på rätt plats"},
-        {id:"documentAccess", text:"Åtkomst och delning är korrekt konfigurerade"}
-      ]},
-      {title:"Funktionstest", items:[
-        {id:"systemTest", text:"Väsentliga system, integrationer och automatiska flöden är testade"}
+        {id:"documentStructure", text:"Kundens dokumentstruktur är upprättad enligt byråns standard"}
       ]}
     ]
   },
@@ -1184,7 +1178,6 @@ function isChecklistItemVisible(item, p1=phaseOne){
   switch(item.visibleWhen){
     case 'existing': return p1.businessStatus === 'existing';
     case 'previousFirm': return p1.businessStatus === 'existing' && p1.previousFirm === 'yes';
-    case 'vat': return p1.services.includes('vat');
     case 'payroll': return p1.services.includes('payroll');
     case 'bookkeeping': return p1.services.includes('bookkeeping');
     case 'foreign': return p1.foreignActivity === 'yes';
@@ -1213,6 +1206,11 @@ function ensureState(s){
   // Längdkontrollen hindrar att anpassningen upprepas för redan uppdaterad data.
   if(Array.isArray(s.avtal) && s.avtal.length === 10) s.avtal.splice(1, 1);
   if(Array.isArray(s.overtag) && s.overtag.length === 9) s.overtag.splice(1, 3);
+  // Fas 5 hade 13 punkter. Ta bort bakifrån så att kvarvarande bockar behåller rätt position.
+  if(Array.isArray(s.system) && s.system.length === 13){
+    s.system.splice(10, 3);
+    s.system.splice(4, 1);
+  }
   SECTIONS.forEach(sec=>{
     const n = flatCount(sec);
     if(!Array.isArray(s[sec.id]) || s[sec.id].length!==n){
@@ -1510,7 +1508,6 @@ function renderSectionContext(section){
   }
   if(section.id === 'system'){
     const details = [];
-    if(phaseOne.services.includes('vat')) details.push('moms');
     if(phaseOne.services.includes('payroll')) details.push('lön');
     if(phaseOne.services.includes('bookkeeping')) details.push('bank/fakturaflöden');
     if(phaseOne.foreignActivity === 'yes') details.push('utlandshantering');
