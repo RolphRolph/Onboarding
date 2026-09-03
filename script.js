@@ -614,6 +614,7 @@ function loadPhaseTwoFor(customerId){
 
 function savePhaseTwo(){
   if(!activeCustomerId) return;
+  clearUnavailableAcceptanceDecision();
   try{
     localStorage.setItem(phaseTwoKeyFor(activeCustomerId), JSON.stringify(phaseTwo));
     setSaveStatus("Sparat automatiskt");
@@ -647,11 +648,45 @@ function isEnhancedDueDiligenceRequired(data = phaseTwo){
   return p.riskLevel === 'high' || p.pepResult === 'hit';
 }
 
-function canAcceptCustomer(data = phaseTwo){
+function canAcceptCustomer(data = phaseTwo, p1 = phaseOne){
   const p = ensurePhaseTwo(data);
-  if(p.kycSufficient !== 'yes') return {allowed:false, reason:'Kundkännedomen måste vara tillräcklig innan kunden kan accepteras.'};
-  if(p.sanctionsResult === 'hit') return {allowed:false, reason:'Sanktionskontrollen kräver manuell bedömning innan kunden kan accepteras.'};
-  return {allowed:true, reason:''};
+  // Undanta själva beslutet för att undvika ett cirkelberoende med progressionen.
+  const ready = phaseTwoRequirements(p, p1, false).every(item=>item.done);
+  if(!ready) return {ready, allowed:false, reason:'Fyll i alla övriga obligatoriska uppgifter i Fas 2 för att välja kundaccept.'};
+  if(p.kycSufficient !== 'yes') return {ready, allowed:false, reason:'Kundkännedomen måste vara tillräcklig innan kunden kan accepteras.'};
+  if(p.sanctionsResult === 'hit') return {ready, allowed:false, reason:'Sanktionskontrollen kräver manuell bedömning innan kunden kan accepteras.'};
+  return {ready, allowed:true, reason:''};
+}
+
+function isAcceptanceDecisionAvailable(decision, acceptance = canAcceptCustomer()){
+  return acceptance.ready && (decision==='accept' ? acceptance.allowed : ['decline','pending'].includes(decision));
+}
+
+function clearUnavailableAcceptanceDecision(){
+  if(!phaseTwo.acceptanceDecision || isAcceptanceDecisionAvailable(phaseTwo.acceptanceDecision)) return false;
+  phaseTwo.acceptanceDecision = '';
+  return true;
+}
+
+function customerAcceptanceLabel(acceptance = canAcceptCustomer()){
+  return isAcceptanceDecisionAvailable(phaseTwo.acceptanceDecision, acceptance)
+    ? {accept:'Accepterad',decline:'Accepteras inte',pending:'Avvaktar'}[phaseTwo.acceptanceDecision] : '–';
+}
+
+/* Uppdatera val och sammanfattning under inmatning utan att ersätta det aktiva textfältet. */
+function refreshCustomerAcceptanceUI(){
+  const page = document.getElementById('page-kundkannedom');
+  if(!page) return;
+  const acceptance = canAcceptCustomer();
+  page.querySelectorAll('[data-p2-field="acceptanceDecision"]').forEach(el=>{
+    el.disabled = !isAcceptanceDecisionAvailable(el.value, acceptance);
+    el.checked = !el.disabled && el.value===phaseTwo.acceptanceDecision;
+    el.closest('.choice-card').classList.toggle('is-disabled', el.disabled);
+  });
+  const help = page.querySelector('[data-acceptance-help]');
+  if(help){ help.hidden = acceptance.allowed; help.textContent = acceptance.reason; }
+  const summary = page.querySelector('[data-acceptance-summary]');
+  if(summary) summary.textContent = customerAcceptanceLabel(acceptance);
 }
 
 /* Samma obligatoriska frågor används i progressen och i listan över det som återstår. */
@@ -729,11 +764,6 @@ function renderPhaseTwoPage(){
     ? indicators.map(x=>`<div class="risk-indicator">🟡 ${safe(x)}</div>`).join('')
     : `<div class="risk-clear">🟢 Inga särskilda riskindikatorer identifierade</div>`;
 
-  const acceptanceWarning = !acceptance.allowed && phaseTwo.acceptanceDecision === 'accept'
-    ? `<div class="alert-box danger">🔴 <strong>${safe(acceptance.reason)}</strong></div>`
-    : (!acceptance.allowed && phaseTwo.kycSufficient
-      ? `<div class="alert-box warning">🟡 ${safe(acceptance.reason)}</div>` : '');
-
   const enhancedHtml = enhancedRequired ? `
     <section class="phase-block kyc-conditional-section"><div class="phase-number">06</div><div>
       <h3>Skärpta åtgärder</h3>
@@ -801,8 +831,8 @@ function renderPhaseTwoPage(){
       <div class="mini-question"><strong>Är kundkännedomen tillräcklig?</strong><div class="choice-row">${kycRadio('kycSufficient','yes','Ja',phaseTwo.kycSufficient)}${kycRadio('kycSufficient','no','Nej',phaseTwo.kycSufficient)}${kycRadio('kycSufficient','review','Ytterligare utredning krävs',phaseTwo.kycSufficient)}</div></div>
       ${phaseTwo.kycSufficient==='review'?`<div class="conditional-block">${kycTextField('remainingInvestigation','Vad återstår?',phaseTwo.remainingInvestigation,'Kort beskrivning')}</div>`:''}
       ${phaseTwo.kycSufficient==='no'?`<div class="alert-box danger">🔴 Kunden kan inte markeras som accepterad innan kundkännedomen är tillräcklig.</div>`:''}
-      <div class="mini-question"><strong>Kundaccept</strong><div class="choice-row">${kycRadio('acceptanceDecision','accept','Kunden accepteras',phaseTwo.acceptanceDecision,!acceptance.allowed)}${kycRadio('acceptanceDecision','decline','Kunden accepteras inte',phaseTwo.acceptanceDecision)}${kycRadio('acceptanceDecision','pending','Beslut avvaktar',phaseTwo.acceptanceDecision)}</div></div>
-      ${acceptanceWarning}
+      <div class="mini-question"><strong>Kundaccept</strong><div class="choice-row">${kycRadio('acceptanceDecision','accept','Kunden accepteras',phaseTwo.acceptanceDecision,!acceptance.allowed)}${kycRadio('acceptanceDecision','decline','Kunden accepteras inte',phaseTwo.acceptanceDecision,!acceptance.ready)}${kycRadio('acceptanceDecision','pending','Beslut avvaktar',phaseTwo.acceptanceDecision,!acceptance.ready)}</div></div>
+      <p class="micro-help" data-acceptance-help ${acceptance.allowed?'hidden':''}>${safe(acceptance.reason)}</p>
       ${enhancedRequired && !Object.values(phaseTwo.enhancedMeasures).every(Boolean)?`<div class="alert-box warning">🟡 Skärpta åtgärder är aktuella. Kontrollera att relevanta åtgärder ovan är genomförda innan slutligt beslut.</div>`:''}
     </div></section>
 
@@ -814,7 +844,7 @@ function renderPhaseTwoPage(){
         <span>Sanktioner</span><strong>${phaseTwo.sanctionsResult==='none'?'🟢 Ingen träff':phaseTwo.sanctionsResult==='hit'?'🔴 Kräver bedömning':'⚪ Inte klart'}</strong>
         <span>Risknivå</span><strong>${phaseTwo.riskLevel==='low'?'Låg':phaseTwo.riskLevel==='normal'?'Normal':phaseTwo.riskLevel==='high'?'Förhöjd':'–'}</strong>
         <span>Kundkännedom</span><strong>${phaseTwo.kycSufficient==='yes'?'🟢 Tillräcklig':phaseTwo.kycSufficient==='no'?'🔴 Otillräcklig':phaseTwo.kycSufficient==='review'?'🟡 Ytterligare utredning':'–'}</strong>
-        <span>Kundaccept</span><strong>${phaseTwo.acceptanceDecision==='accept' && acceptance.allowed?'Accepterad':phaseTwo.acceptanceDecision==='decline'?'Accepteras inte':phaseTwo.acceptanceDecision==='pending'?'Avvaktar':'–'}</strong>
+        <span>Kundaccept</span><strong data-acceptance-summary>${customerAcceptanceLabel(acceptance)}</strong>
       </div>
     </section>`;
 
@@ -832,8 +862,6 @@ function bindPhaseTwoEvents(){
 
   page.querySelectorAll('[data-p2-field]').forEach(el=>el.addEventListener('change', ()=>{
     phaseTwo[el.dataset.p2Field] = el.value;
-    // Om ett tidigare val gör kundaccept ogiltig tas det gamla acceptbeslutet bort.
-    if(phaseTwo.acceptanceDecision === 'accept' && !canAcceptCustomer().allowed) phaseTwo.acceptanceDecision = '';
     savePhaseTwo(); renderMain(); renderSidebar();
   }));
 
@@ -1024,7 +1052,7 @@ function phaseOneRequirements(data){
   return items;
 }
 
-function phaseTwoRequirements(data, p1 = phaseOne){
+function phaseTwoRequirements(data, p1 = phaseOne, includeAcceptance = true){
   const p = ensurePhaseTwo(data), items = [];
   const add = (key,label,attribute,done)=>items.push({key,label,selector:`[${attribute}="${key}"]`,done:!!done});
   const check = (key,label)=>add(key,label,'data-p2-check',p[key]);
@@ -1062,7 +1090,7 @@ function phaseTwoRequirements(data, p1 = phaseOne){
   }
   radio('kycSufficient','Är kundkännedomen tillräcklig?');
   if(p.kycSufficient==='review') text('remainingInvestigation','Kundkännedom – vad återstår att utreda?');
-  add('acceptanceDecision','Kundaccept','data-p2-field',p.acceptanceDecision && (p.acceptanceDecision!=='accept' || canAcceptCustomer(p).allowed));
+  if(includeAcceptance) add('acceptanceDecision','Kundaccept','data-p2-field',isAcceptanceDecisionAvailable(p.acceptanceDecision, canAcceptCustomer(p, p1)));
   return items;
 }
 
@@ -1689,6 +1717,8 @@ function renderCustomersPage(){
 const mainEl = document.getElementById('main');
 
 function renderMain(){
+  // Fångar även nya villkor från Fas 1 och otillåtna beslut hos en återöppnad kund.
+  if(view==='checklist' && clearUnavailableAcceptanceDecision()) savePhaseTwo();
   // Behåll fokus på samma fråga när ett svar uppdaterar de villkorade fälten.
   const focused = document.activeElement;
   const focusTargetId = mainEl.contains(focused) ? focused.closest('.remaining-target')?.id : null;
@@ -1762,6 +1792,7 @@ function onToggle(e){
 }
 
 function refreshChecklistUI(){
+  refreshCustomerAcceptanceUI();
   SECTIONS.forEach(s=>{
     const wrap = document.getElementById('progress-'+s.id);
     if(wrap){
