@@ -561,6 +561,7 @@ function blankPhaseTwo(){
     beneficialOwnerInvestigated: false,
     beneficialOwnerStatus: "",      // "identified" | "none" | "unknown"
     beneficialOwnerName: "",
+    beneficialOwnerNameEditing: true, // Endast visningsläge; texten sparas löpande.
     noBeneficialOwnerReason: "",
     alternativeBeneficialOwner: "",
     complexOwnership: "",            // "no" | "yes"
@@ -579,6 +580,7 @@ function blankPhaseTwo(){
 
     riskLevel: "",                   // "low" | "normal" | "high"
     riskReason: "",
+    riskReasonEditing: true,
 
     enhancedMeasures: {
       additionalInformation: false,
@@ -601,6 +603,8 @@ function ensurePhaseTwo(data){
     ...base,
     ...d,
     businessDetailsEditing: d.businessDetailsEditing !== false,
+    beneficialOwnerNameEditing: d.beneficialOwnerNameEditing !== false,
+    riskReasonEditing: d.riskReasonEditing !== false,
     enhancedMeasures: {...base.enhancedMeasures, ...(d.enhancedMeasures || {})}
   };
 }
@@ -705,7 +709,7 @@ function renderPhaseTwoPage(){
   const p1 = phaseOneContextForKyc();
 
   const beneficialOwnerExtra = phaseTwo.beneficialOwnerStatus === 'identified'
-    ? `<div class="conditional-block">${kycTextField('beneficialOwnerName','Namn på verklig huvudman',phaseTwo.beneficialOwnerName,'Namn')}</div>`
+    ? renderSavedText('beneficialOwnerName')
     : phaseTwo.beneficialOwnerStatus === 'none'
       ? `<div class="conditional-block">${kycTextField('noBeneficialOwnerReason','Kort motivering',phaseTwo.noBeneficialOwnerReason,'Varför bedöms ingen verklig huvudman finnas?')}</div>`
       : phaseTwo.beneficialOwnerStatus === 'unknown'
@@ -785,7 +789,7 @@ function renderPhaseTwoPage(){
       <p class="block-help">Riskindikatorerna är stöd. Du gör alltid den slutliga riskbedömningen.</p>
       <div class="risk-list">${riskHtml}</div>
       <div class="mini-question"><strong>Risknivå</strong><div class="choice-row">${kycRadio('riskLevel','low','Låg',phaseTwo.riskLevel)}${kycRadio('riskLevel','normal','Normal',phaseTwo.riskLevel)}${kycRadio('riskLevel','high','Förhöjd',phaseTwo.riskLevel)}</div></div>
-      <div class="kyc-single-field">${kycTextField('riskReason','Kort motivering',phaseTwo.riskReason,'Motivera bedömningen kort')}</div>
+      ${renderSavedText('riskReason')}
     </div></section>
 
     ${enhancedHtml}
@@ -849,6 +853,7 @@ function bindPhaseTwoEvents(){
     savePhaseTwo();
     refreshTextEditors(phaseTwo.businessDetailsEditing ? '[data-p2-text="businessDescription"]' : '[data-business-toggle]');
   });
+  bindSavedTextEvents(page);
 }
 
 
@@ -945,9 +950,38 @@ function renderBusinessDetails(){
   const editing = phaseTwo.businessDetailsEditing;
   return `<div class="business-details" data-business-details>
     ${editing?`<div class="field-grid three kyc-fields">${BUSINESS_DETAIL_FIELDS.map(field=>`<div data-business-detail="${field.key}" id="question-kundkannedom-${field.key}">${kycTextField(field.key,field.label,phaseTwo[field.key],field.placeholder)}</div>`).join('')}</div>`
-      : `<dl class="business-details-summary">${BUSINESS_DETAIL_FIELDS.map(field=>`<div data-business-detail="${field.key}" id="question-kundkannedom-${field.key}"><dt>${field.label}</dt><dd>${String(phaseTwo[field.key] ?? '').trim()?safe(phaseTwo[field.key]):'<span class="text-editor-empty">Inte ifyllt</span>'}</dd></div>`).join('')}</dl>`}
-    <div class="text-editor-actions"><button type="button" class="${editing?'text-editor-button':'text-editor-link'}" data-business-toggle>${editing?'Klar':'Ändra'}</button></div>
+      : `<dl class="business-details-summary field-grid three">${BUSINESS_DETAIL_FIELDS.map(field=>`<div data-business-detail="${field.key}" id="question-kundkannedom-${field.key}"><dt>${field.label}</dt><dd>${String(phaseTwo[field.key] ?? '').trim()?safe(phaseTwo[field.key]):'<span class="text-editor-empty">Inte ifyllt</span>'}</dd></div>`).join('')}</dl>`}
+    <div class="text-editor-actions"><button type="button" class="${editing?'text-editor-button':'text-editor-link'}" data-business-toggle>${editing?'Spara':'Ändra'}</button></div>
   </div>`;
+}
+
+/* Enskilda textvärden delar läsläge och åtgärder; befintlig autosparning används vid inmatning. */
+const SAVED_TEXT_FIELDS = {
+  beneficialOwnerName: {label:'Namn på verklig huvudman', placeholder:'Namn'},
+  riskReason: {label:'Kort motivering', placeholder:'Motivera bedömningen kort'}
+};
+
+function renderSavedText(key){
+  const field = SAVED_TEXT_FIELDS[key], editing = phaseTwo[`${key}Editing`];
+  return `<div class="kyc-single-field" data-saved-text="${key}" id="question-kundkannedom-${key}">
+    ${editing ? kycTextField(key,field.label,phaseTwo[key],field.placeholder)
+      : `<dl class="saved-text-summary"><dt>${field.label}</dt><dd>${String(phaseTwo[key] ?? '').trim()?safe(phaseTwo[key]):'<span class="text-editor-empty">Inte ifyllt</span>'}</dd></dl>`}
+    <div class="text-editor-actions">
+      <button type="button" class="${editing?'text-editor-button':'text-editor-link'}" data-saved-text-action="${editing?'save':'edit'}">${editing?'Spara':'Ändra'}</button>
+      ${!editing?'<button type="button" class="text-editor-link" data-saved-text-action="delete">Ta bort</button>':''}
+    </div>
+  </div>`;
+}
+
+function bindSavedTextEvents(page){
+  page.querySelectorAll('[data-saved-text-action]').forEach(button=>button.addEventListener('click', ()=>{
+    const key = button.closest('[data-saved-text]').dataset.savedText;
+    const action = button.dataset.savedTextAction;
+    if(action==='delete') phaseTwo[key] = '';
+    phaseTwo[`${key}Editing`] = action!=='save';
+    savePhaseTwo();
+    refreshTextEditors(action==='save' ? `[data-saved-text="${key}"] [data-saved-text-action="edit"]` : `[data-p2-text="${key}"]`);
+  }));
 }
 
 /* ============ OBLIGATORISKA UPPGIFTER OCH LÄNKAR ============
@@ -993,7 +1027,7 @@ function phaseTwoRequirements(data){
   const add = (key,label,attribute,done)=>items.push({key,label,selector:`[${attribute}="${key}"]`,done:!!done});
   const check = (key,label)=>add(key,label,'data-p2-check',p[key]);
   const radio = (key,label)=>add(key,label,'data-p2-field',p[key]);
-  const text = (key,label)=>add(key,label,BUSINESS_DETAIL_FIELDS.some(field=>field.key===key)?'data-business-detail':'data-p2-text',String(p[key] ?? '').trim());
+  const text = (key,label)=>add(key,label,BUSINESS_DETAIL_FIELDS.some(field=>field.key===key)?'data-business-detail':SAVED_TEXT_FIELDS[key]?'data-saved-text':'data-p2-text',String(p[key] ?? '').trim());
   check('identityVerified','Kund och företrädare identifierade och verifierade');
   text('identitySource','Identitetskontroll – källa');
   text('identityDate','Identitetskontroll – kontrolldatum');
@@ -1091,8 +1125,11 @@ function onRemainingTaskLink(event){
   if(!target) return;
   event.preventDefault();
   // Ett länkmål finns i båda lägena; öppna redigeringen innan det saknade fältet fokuseras.
-  if(target.closest('[data-business-details]') && !phaseTwo.businessDetailsEditing){
-    phaseTwo.businessDetailsEditing = true;
+  const savedText = target.closest('[data-saved-text]');
+  const editingKey = savedText ? `${savedText.dataset.savedText}Editing`
+    : target.closest('[data-business-details]') ? 'businessDetailsEditing' : null;
+  if(editingKey && !phaseTwo[editingKey]){
+    phaseTwo[editingKey] = true;
     savePhaseTwo(); renderMain(); renderSidebar();
     target = document.getElementById(targetId);
     if(!target) return;
