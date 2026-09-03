@@ -658,7 +658,7 @@ function canAcceptCustomer(data = phaseTwo, p1 = phaseOne){
   const ready = phaseTwoRequirements(p, p1, false).every(item=>item.done);
   if(!ready) return {ready, allowed:false, reason:'Fyll i alla övriga obligatoriska uppgifter i Fas 2 för att välja kundaccept.'};
   if(p.kycSufficient !== 'yes') return {ready, allowed:false, reason:'Kundkännedomen måste vara tillräcklig innan kunden kan accepteras.'};
-  if(p.sanctionsResult === 'hit') return {ready, allowed:false, reason:'Sanktionskontrollen kräver manuell bedömning innan kunden kan accepteras.'};
+  // Sanktionsindikatorn visas som riskinformation och är ingen separat spärr för kundaccept.
   return {ready, allowed:true, reason:''};
 }
 
