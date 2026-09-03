@@ -549,6 +549,9 @@ function blankPhaseTwo(){
     identityVerified: false,
     identitySource: "",
     identityDate: "",
+    identityDateInitialized: false,   // Förifyll endast vid första användningen, aldrig efter borttagning.
+    identityDetailsEditing: true,
+    identityDocumentationOpen: false,
     representativeStatus: "",      // "no" | "yes"
     representativeChecked: false,
 
@@ -566,9 +569,7 @@ function blankPhaseTwo(){
     expectedTransactions: "",
     businessDetailsEditing: true,     // Endast visningsläge; påverkar inte om uppgifterna är ifyllda.
 
-    pepCheckCompleted: false,
     pepResult: "",                   // "none" | "hit"
-    sanctionsCheckCompleted: false,
     sanctionsResult: "",             // "none" | "hit"
     geographicRisk: "",              // "no" | "yes" | "unsure"
 
@@ -599,6 +600,9 @@ function ensurePhaseTwo(data){
     businessDetailsEditing: d.businessDetailsEditing !== false,
     beneficialOwnerNameEditing: d.beneficialOwnerNameEditing !== false,
     riskReasonEditing: d.riskReasonEditing !== false,
+    identityDetailsEditing: d.identityDetailsEditing !== false,
+    identityDocumentationOpen: d.identityDocumentationOpen === true,
+    identityDateInitialized: d.identityDateInitialized === true || !!String(d.identityDate ?? '').trim(),
     enhancedMeasures: {...base.enhancedMeasures, ...(d.enhancedMeasures || {})}
   };
 }
@@ -786,7 +790,7 @@ function renderPhaseTwoPage(){
     <section class="phase-block"><div class="phase-number">01</div><div>
       <h3>Identitet och behörighet</h3>
       ${kycCheck('identityVerified','Kund och företrädare identifierade och verifierade',phaseTwo.identityVerified)}
-      <details class="compact-details"><summary>Visa dokumentation</summary><div class="field-grid two">${kycTextField('identitySource','Källa',phaseTwo.identitySource,'T.ex. registreringsbevis')}${kycTextField('identityDate','Kontrolldatum',phaseTwo.identityDate,'ÅÅÅÅ-MM-DD')}</div></details>
+      ${renderIdentityDocumentation()}
       <div class="mini-question"><strong>Finns ombud/fullmakt?</strong><div class="choice-row compact">${kycRadio('representativeStatus','no','Nej',phaseTwo.representativeStatus)}${kycRadio('representativeStatus','yes','Ja',phaseTwo.representativeStatus)}</div></div>
       ${phaseTwo.representativeStatus==='yes'?`<div class="conditional-block">${kycCheck('representativeChecked','Ombud och behörighet kontrollerade',phaseTwo.representativeChecked)}</div>`:''}
     </div></section>
@@ -809,9 +813,9 @@ function renderPhaseTwoPage(){
 
     <section class="phase-block"><div class="phase-number">04</div><div>
       <h3>PEP, sanktioner och geografi</h3>
-      <div class="kyc-control-row"><div>${kycCheck('pepCheckCompleted','PEP/RCA-kontroll genomförd',phaseTwo.pepCheckCompleted)}</div><div class="choice-row compact">${kycRadio('pepResult','none','Ingen träff',phaseTwo.pepResult)}${kycRadio('pepResult','hit','Träff/möjlig träff',phaseTwo.pepResult)}</div></div>
+      <div class="kyc-control-row"><div><strong>PEP/RCA-kontroll</strong></div><div class="choice-row compact">${kycRadio('pepResult','none','Ingen träff',phaseTwo.pepResult)}${kycRadio('pepResult','hit','Träff/möjlig träff',phaseTwo.pepResult)}</div></div>
       ${pepFollowup}
-      <div class="kyc-control-row"><div>${kycCheck('sanctionsCheckCompleted','Sanktionskontroll genomförd',phaseTwo.sanctionsCheckCompleted)}</div><div class="choice-row compact">${kycRadio('sanctionsResult','none','Ingen träff',phaseTwo.sanctionsResult)}${kycRadio('sanctionsResult','hit','Möjlig/bekräftad träff',phaseTwo.sanctionsResult)}</div></div>
+      <div class="kyc-control-row"><div><strong>Sanktionskontroll</strong></div><div class="choice-row compact">${kycRadio('sanctionsResult','none','Ingen träff',phaseTwo.sanctionsResult)}${kycRadio('sanctionsResult','hit','Möjlig/bekräftad träff',phaseTwo.sanctionsResult)}</div></div>
       ${sanctionsFollowup}
       <div class="mini-question"><strong>Finns relevant koppling till högriskland eller annan tydlig geografisk risk?</strong><div class="choice-row">${kycRadio('geographicRisk','no','Nej',phaseTwo.geographicRisk)}${kycRadio('geographicRisk','yes','Ja',phaseTwo.geographicRisk)}${kycRadio('geographicRisk','unsure','Osäkert',phaseTwo.geographicRisk)}</div></div>
     </div></section>
@@ -868,6 +872,7 @@ function bindPhaseTwoEvents(){
   page.querySelectorAll('[data-p2-text]').forEach(el=>{
     el.addEventListener('input', ()=>{
       phaseTwo[el.dataset.p2Text] = el.value;
+      if(el.dataset.p2Text==='identityDate') phaseTwo.identityDateInitialized = true;
       savePhaseTwo();
       // Uppdatera återstående uppgifter utan att ersätta fältet eller stänga dokumentationen.
       refreshChecklistUI(); renderSidebar();
@@ -884,6 +889,7 @@ function bindPhaseTwoEvents(){
     refreshTextEditors(phaseTwo.businessDetailsEditing ? '[data-p2-text="businessDescription"]' : '[data-business-toggle]');
   });
   bindSavedTextEvents(page);
+  bindIdentityDocumentationEvents(page);
 }
 
 
@@ -1014,6 +1020,63 @@ function bindSavedTextEvents(page){
   }));
 }
 
+/* Identitetsdokumentationen återanvänder textfält, läsläge och knappar för en enda uppsättning svar. */
+const IDENTITY_DETAIL_FIELDS = [
+  {key:'identitySource',label:'Källa',placeholder:'T.ex. registreringsbevis'},
+  {key:'identityDate',label:'Kontrolldatum',placeholder:'ÅÅÅÅ-MM-DD'}
+];
+
+function initializeIdentityDate(){
+  if(phaseTwo.identityDateInitialized) return false;
+  phaseTwo.identityDateInitialized = true;
+  if(!String(phaseTwo.identityDate ?? '').trim()){
+    const today = new Date();
+    phaseTwo.identityDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  }
+  return true;
+}
+
+function renderIdentityDocumentation(){
+  const editing = phaseTwo.identityDetailsEditing;
+  return `<details class="compact-details" data-identity-documentation ${phaseTwo.identityDocumentationOpen?'open':''}><summary>Visa dokumentation</summary>
+    ${editing?`<div class="field-grid two">${IDENTITY_DETAIL_FIELDS.map(field=>`<div data-identity-detail="${field.key}" id="question-kundkannedom-${field.key}">${kycTextField(field.key,field.label,phaseTwo[field.key],field.placeholder)}</div>`).join('')}</div>`
+      : `<dl class="saved-text-summary field-grid two">${IDENTITY_DETAIL_FIELDS.map(field=>`<div data-identity-detail="${field.key}" id="question-kundkannedom-${field.key}"><dt>${field.label}</dt><dd>${String(phaseTwo[field.key] ?? '').trim()?safe(phaseTwo[field.key]):'<span class="text-editor-empty">Inte ifyllt</span>'}</dd></div>`).join('')}</dl>`}
+    <div class="text-editor-actions">
+      <button type="button" class="${editing?'text-editor-button':'text-editor-link'}" data-identity-action="${editing?'save':'edit'}">${editing?'Spara':'Ändra'}</button>
+      ${!editing?'<button type="button" class="text-editor-link" data-identity-action="delete">Ta bort</button>':''}
+    </div>
+  </details>`;
+}
+
+function bindIdentityDocumentationEvents(page){
+  const details = page.querySelector('[data-identity-documentation]');
+  if(!details) return;
+  const customerId = activeCustomerId;
+  details.addEventListener('toggle', ()=>{
+    if(!details.isConnected || activeCustomerId!==customerId) return;
+    if(details.open===phaseTwo.identityDocumentationOpen && (!details.open || phaseTwo.identityDateInitialized)) return;
+    phaseTwo.identityDocumentationOpen = details.open;
+    if(details.open && initializeIdentityDate()){
+      const input = details.querySelector('[data-p2-text="identityDate"]');
+      if(input) input.value = phaseTwo.identityDate;
+      const savedDate = details.querySelector('[data-identity-detail="identityDate"] dd');
+      if(savedDate) savedDate.textContent = phaseTwo.identityDate;
+    }
+    savePhaseTwo(); refreshChecklistUI(); renderSidebar();
+  });
+  details.querySelectorAll('[data-identity-action]').forEach(button=>button.addEventListener('click', ()=>{
+    const action = button.dataset.identityAction;
+    if(action==='delete'){
+      phaseTwo.identitySource = ''; phaseTwo.identityDate = '';
+      phaseTwo.identityDateInitialized = true;
+    }else initializeIdentityDate();
+    phaseTwo.identityDetailsEditing = action!=='save';
+    phaseTwo.identityDocumentationOpen = true;
+    savePhaseTwo();
+    refreshTextEditors(action==='save' ? '[data-identity-action="edit"]' : '[data-p2-text="identitySource"]');
+  }));
+}
+
 /* ============ OBLIGATORISKA UPPGIFTER OCH LÄNKAR ============
    En fråga ger en post, även när den innehåller flera svarsalternativ.
    Villkorade fält tas med först när de visas. Kundernas lagringsformat ändras inte. */
@@ -1057,7 +1120,7 @@ function phaseTwoRequirements(data, p1 = phaseOne, includeAcceptance = true){
   const add = (key,label,attribute,done)=>items.push({key,label,selector:`[${attribute}="${key}"]`,done:!!done});
   const check = (key,label)=>add(key,label,'data-p2-check',p[key]);
   const radio = (key,label)=>add(key,label,'data-p2-field',p[key]);
-  const text = (key,label)=>add(key,label,BUSINESS_DETAIL_FIELDS.some(field=>field.key===key)?'data-business-detail':SAVED_TEXT_FIELDS[key]?'data-saved-text':'data-p2-text',String(p[key] ?? '').trim());
+  const text = (key,label)=>add(key,label,BUSINESS_DETAIL_FIELDS.some(field=>field.key===key)?'data-business-detail':SAVED_TEXT_FIELDS[key]?'data-saved-text':IDENTITY_DETAIL_FIELDS.some(field=>field.key===key)?'data-identity-detail':'data-p2-text',String(p[key] ?? '').trim());
   check('identityVerified','Kund och företrädare identifierade och verifierade');
   text('identitySource','Identitetskontroll – källa');
   text('identityDate','Identitetskontroll – kontrolldatum');
@@ -1075,9 +1138,7 @@ function phaseTwoRequirements(data, p1 = phaseOne, includeAcceptance = true){
   text('businessDescription','Verksamhet – kort beskrivning');
   text('revenueModel','Huvudsakliga intäkter');
   text('expectedTransactions','Normala transaktioner');
-  check('pepCheckCompleted','PEP/RCA-kontroll genomförd');
   radio('pepResult','Resultat av PEP/RCA-kontrollen');
-  check('sanctionsCheckCompleted','Sanktionskontroll genomförd');
   radio('sanctionsResult','Resultat av sanktionskontrollen');
   radio('geographicRisk','Koppling till högriskland eller annan geografisk risk?');
   radio('riskLevel','Risknivå');
@@ -1157,10 +1218,12 @@ function onRemainingTaskLink(event){
   if(!target) return;
   event.preventDefault();
   // Ett länkmål finns i båda lägena; öppna redigeringen innan det saknade fältet fokuseras.
+  const identityDocumentation = target.closest('[data-identity-documentation]');
   const savedText = target.closest('[data-saved-text]');
-  const editingKey = savedText ? `${savedText.dataset.savedText}Editing`
+  const editingKey = identityDocumentation ? 'identityDetailsEditing' : savedText ? `${savedText.dataset.savedText}Editing`
     : target.closest('[data-business-details]') ? 'businessDetailsEditing' : null;
-  if(editingKey && !phaseTwo[editingKey]){
+  if(identityDocumentation){ phaseTwo.identityDocumentationOpen = true; initializeIdentityDate(); }
+  if(identityDocumentation || (editingKey && !phaseTwo[editingKey])){
     phaseTwo[editingKey] = true;
     savePhaseTwo(); renderMain(); renderSidebar();
     target = document.getElementById(targetId);
