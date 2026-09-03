@@ -43,7 +43,7 @@ const SECTIONS = [
       {title:"Räkenskapsinformation", items:[
         {id:"bookkeepingData", text:"Bokföringsdata/SIE och nödvändiga bokföringsunderlag är mottagna", visibleWhen:"existing"},
         {id:"annualMaterial", text:"Senaste bokslut/årsredovisning och relevanta deklarationer är mottagna", visibleWhen:"existing"},
-        {id:"registers", text:"Nödvändiga register och specifikationer är mottagna", visibleWhen:"existing"}
+        {id:"registers", text:"Nödvändiga register och specifikationer, t ex. anläggningsregister är mottagna", visibleWhen:"existing"}
       ]},
       {title:"Ingående läge", items:[
         {id:"openingBalances", text:"Ingående balanser och väsentliga poster är kontrollerade", visibleWhen:"existing"},
