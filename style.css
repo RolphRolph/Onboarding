@@ -46,12 +46,6 @@
     font-family:'Fraunces', serif; font-weight:600; font-size:27px;
     margin:0; letter-spacing:.01em; color:var(--text-light);
   }
-  .brand-subtitle{
-    margin-top:4px;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:9.5px; letter-spacing:.12em; text-transform:uppercase;
-    color:var(--brass-light);
-  }
 
   #client-block{
     position:relative; background:var(--ink-2);

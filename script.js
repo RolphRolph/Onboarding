@@ -176,6 +176,7 @@ function loadPhaseOneFor(customerId){
 
 function savePhaseOne(){
   if(!activeCustomerId) return;
+  clearUnavailablePhaseOneChoices();
   try{
     localStorage.setItem(phaseOneKeyFor(activeCustomerId), JSON.stringify(phaseOne));
     setSaveStatus("Sparat automatiskt");
@@ -349,6 +350,21 @@ function getAvailableVatPeriods(){
   return {visible:true, status:'possible', message:'Välj bland de perioder som är möjliga utifrån angiven omfattning.', options};
 }
 
+/* Rensa endast slutval som inte längre är valbara enligt befintligt regelstöd.
+   Valbara alternativ behålls även när de kräver bedömning; inget ersättningsval görs. */
+function clearUnavailablePhaseOneChoices(kRules=getAvailableKRules(), accounting=getAvailableAccountingMethods(), vat=getAvailableVatPeriods()){
+  const optionsByChoice = {kRule:kRules, accountingMethod:accounting.options, vatPeriod:vat.options};
+  let changed = false;
+  Object.entries(optionsByChoice).forEach(([key, options])=>{
+    const selected = phaseOne.choices[key];
+    if(selected && !options.some(o=>o.value === selected && !o.disabled && o.state !== 'disabled')){
+      phaseOne.choices[key] = '';
+      changed = true;
+    }
+  });
+  return changed;
+}
+
 function calculateSimplifiedAnnualReportEligibility(){
   if(phaseOne.companyType !== 'sole') return {visible:false};
   const k1 = calculateK1Eligibility();
@@ -420,14 +436,10 @@ function renderPhaseOnePage(){
   const audit = calculateAuditRequirement();
   const large = calculateLargeCompanyStatus();
   const kRules = getAvailableKRules();
-  // Rensa även ett sparat K1-val när båda historiska åren blockerar K1.
-  if(phaseOne.companyType === 'sole' && phaseOne.businessStatus === 'existing' &&
-     phaseOne.choices.kRule === 'K1' && kRules.some(r => r.value === 'K1' && r.disabled)){
-    phaseOne.choices.kRule = '';
-    savePhaseOne();
-  }
   const accounting = getAvailableAccountingMethods();
   const vat = getAvailableVatPeriods();
+  // Kontrollera även äldre sparade val innan markeringar och sammanfattning visas.
+  if(clearUnavailablePhaseOneChoices(kRules, accounting, vat)) savePhaseOne();
   const simplified = calculateSimplifiedAnnualReportEligibility();
   const counts = phaseOneCounts();
   const pct = Math.round((counts.done / counts.total) * 100);
@@ -1356,7 +1368,7 @@ function renderCustomersPage(){
     <h2>Kundprofiler</h2>
     <p class="syfte">Lägg till en ny kund för att starta en onboarding, eller öppna en befintlig kundprofil för att fortsätta där du var.</p>
     <form class="add-client-form" id="add-client-form">
-      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Acme AB" autocomplete="off">
+      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Onboardly AB" autocomplete="off">
       <button type="submit">Lägg till kund</button>
       <div id="duplicate-client-warning" class="alert-box warning client-duplicate-warning" role="alert" hidden>Kunden finns redan. Öppna den befintliga kundprofilen i listan nedan.</div>
     </form>
