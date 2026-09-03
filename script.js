@@ -14,7 +14,6 @@ const SECTIONS = [
   },
   {
     id:"avtal", title:"Avtal & arbetssätt",
-    syfte:"Bestämma hur uppdraget ska genomföras i praktiken och tydliggöra ansvar mellan kunden och byrån.",
     groups:[
       {title:"Uppdrag och villkor", items:[
         {id:"scope", text:"Uppdragets omfattning och gränsdragning är fastställd"}
@@ -35,7 +34,6 @@ const SECTIONS = [
   },
   {
     id:"overtag", title:"Övertag & ekonomiskt underlag",
-    syfte:"Säkerställa ett korrekt ekonomiskt utgångsläge och en tydlig övergång till den nya byrån.",
     groups:[
       {title:"Övertag från tidigare byrå", items:[
         {id:"previousContact", text:"Tidigare byrå är kontaktad och övertagandet är samordnat", visibleWhen:"previousFirm"}
@@ -53,7 +51,6 @@ const SECTIONS = [
   },
   {
     id:"system", title:"Behörigheter, system & dokumentation",
-    syfte:"Göra kundens praktiska arbetsmiljö redo för löpande arbete och bara visa de delar som är relevanta för uppdraget.",
     groups:[
       {title:"Behörigheter", items:[
         {id:"authorityAccess", text:"Nödvändiga myndighets- och ombudsbehörigheter är på plats"},
@@ -74,7 +71,6 @@ const SECTIONS = [
   },
   {
     id:"uppfoljning", title:"Startklar & uppföljning",
-    syfte:"Verifiera att kunden är redo för löpande arbete och fånga upp problem efter den första tiden.",
     groups:[
       {title:"Startklar", items:[
         {id:"acceptanceAgreement", text:"Kundaccept och uppdragsavtal är klara", disabledWhen:"startPrerequisites"},
@@ -467,7 +463,6 @@ function renderPhaseOnePage(){
   page.innerHTML = `
     <div class="page-eyebrow">Onboarding · Steg 1 av 6</div>
     <h2>Företagsuppgifter och uppdragsprofil</h2>
-    <p class="syfte">Ange ett fåtal grunduppgifter. Verktyget återanvänder dem för att filtrera relevanta alternativ och ge regelverksstöd.</p>
     <div class="progress-wrap" id="progress-kontakt"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} uppgifter ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
 
     <section class="phase-block"><div><h3>Företagsform <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('companyType','ab','Aktiebolag',phaseOne.companyType==='ab')}${radioCard('companyType','sole','Enskild näringsverksamhet',phaseOne.companyType==='sole')}</div></div></section>
@@ -476,7 +471,7 @@ function renderPhaseOnePage(){
 
     <section class="phase-block"><div><h3>Vilka tjänster ska byrån utföra? <span class="required">Minst ett val</span></h3><div class="service-grid">${services.map(([v,l])=>`<label class="service-option"><input type="checkbox" data-p1-service="${v}" ${phaseOne.services.includes(v)?'checked':''}><span class="native-box"></span><span>${l}</span></label>`).join('')}</div>${phaseOne.services.includes('other')?renderOtherServices():''}</div></section>
 
-    <section class="phase-block"><div><h3>Registreringar och styrande uppgifter</h3><p class="block-help">Några få svar används för att dölja sådant som inte är relevant i senare faser.</p>
+    <section class="phase-block"><div><h3>Registreringar och styrande uppgifter</h3>
       <div class="compact-choice-stack">
         ${compactYesNo('fTaxRegistered','F-skatt registrerad?',phaseOne.fTaxRegistered)}
         ${phaseOne.services.includes('vat') ? compactYesNo('vatRegistered','Momsregistrerad?',phaseOne.vatRegistered) : ''}
@@ -784,7 +779,6 @@ function renderPhaseTwoPage(){
   page.innerHTML = `
     <div class="page-eyebrow">Onboarding · Steg 2 av 6</div>
     <h2>Kundkännedom</h2>
-    <p class="syfte">Bekräfta grundkontrollerna. Verktyget visar följdfrågor och riskstöd bara när något behöver utredas vidare.</p>
     <div class="progress-wrap" id="progress-kundkannedom"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} uppgifter ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
 
     <section class="phase-block"><div>
@@ -1616,9 +1610,6 @@ function renderSectionContext(section){
     if(phaseOne.foreignActivity === 'yes') details.push('utlandshantering');
     return `<div class="section-context"><strong>Systemdelen är filtrerad utifrån kunden</strong><p>${details.length ? `Fokus just nu: ${safe(details.join(', '))}.` : 'Fyll i uppdragsprofilen i Fas 1 för mer specifik filtrering.'} Övriga kundspecifika integrationer hanteras bara när de faktiskt används.</p></div>`;
   }
-  if(section.id === 'uppfoljning'){
-    return `<div class="section-context"><strong>Två steg i samma fas</strong><p>Markera först kunden som startklar. Den korta uppföljningen görs lämpligen efter cirka 30–90 dagar och påverkar inte om kunden kan börja hanteras.</p></div>`;
-  }
   return '';
 }
 
@@ -1684,7 +1675,6 @@ function renderSectionPage(section){
   page.innerHTML = `
     <div class="page-eyebrow">Onboarding · Steg ${SECTIONS.findIndex(s=>s.id===section.id)+1} av ${SECTIONS.length}</div>
     <h2>${section.title}</h2>
-    <p class="syfte">${section.syfte}</p>
     <div class="progress-wrap" id="progress-${section.id}">
       <div class="progress-top">
         <span class="pct-num">${pct}%</span>
@@ -1725,7 +1715,6 @@ function renderSummaryPage(){
   page.innerHTML = `
     <div class="page-eyebrow">Onboarding · Översikt</div>
     <h2>Sammanfattning${activeCustomer ? ' – '+safe(activeCustomer.name) : ''}</h2>
-    <p class="syfte">Här ser du hur långt onboardingen av kunden har kommit och vilka av de sex faserna som återstår.</p>
     <div class="summary-hero">
       <div class="big-ring" style="--pct:${op}; --ringcolor:${pctColor(op)}"><span class="num">${op}%</span></div>
       <div class="cap">Total färdigställd onboarding</div>
