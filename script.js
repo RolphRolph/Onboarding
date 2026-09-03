@@ -306,7 +306,8 @@ function calculateK1Eligibility(){
   if(latestOver !== previousOver){
     return {visible:true, status:'review', label:'Kräver bedömning', detail:'Nettoomsättningen överstiger 3 mkr under ett av de två åren. K1 bygger på att nettoomsättningen normalt uppgår till högst 3 mkr. Ett enstaka överskridande behöver därför bedömas.'};
   }
-  return {visible:true, status:'review', label:'Sannolikt inte tillämpligt – kontrollera bedömningen', detail:'Nettoomsättningen överstiger 3 mkr under båda angivna räkenskapsåren.'};
+  // Två räkenskapsår över 3 mkr blockerar K1 enligt verktygets tvåårsbedömning.
+  return {visible:true, status:'blocked', label:'Inte möjligt utifrån angiven omsättning', detail:'Nettoomsättningen överstiger 3 mkr under båda angivna räkenskapsåren.'};
 }
 
 function getAvailableKRules(){
@@ -423,6 +424,12 @@ function renderPhaseOnePage(){
   const audit = calculateAuditRequirement();
   const large = calculateLargeCompanyStatus();
   const kRules = getAvailableKRules();
+  // Rensa även ett sparat K1-val när båda historiska åren blockerar K1.
+  if(phaseOne.companyType === 'sole' && phaseOne.businessStatus === 'existing' &&
+     phaseOne.choices.kRule === 'K1' && kRules.some(r => r.value === 'K1' && r.disabled)){
+    phaseOne.choices.kRule = '';
+    savePhaseOne();
+  }
   const accounting = getAvailableAccountingMethods();
   const vat = getAvailableVatPeriods();
   const simplified = calculateSimplifiedAnnualReportEligibility();
@@ -1348,7 +1355,7 @@ function renderCustomersPage(){
     <h2>Kundprofiler</h2>
     <p class="syfte">Lägg till en ny kund för att starta en onboarding, eller öppna en befintlig kundprofil för att fortsätta där du var.</p>
     <form class="add-client-form" id="add-client-form">
-      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Företag AB" autocomplete="off">
+      <input type="text" id="new-client-name" placeholder="Kundens namn, t.ex. Acme AB" autocomplete="off">
       <button type="submit">Lägg till kund</button>
       <div id="duplicate-client-warning" class="alert-box warning client-duplicate-warning" role="alert" hidden>Kunden finns redan. Öppna den befintliga kundprofilen i listan nedan.</div>
     </form>
