@@ -377,14 +377,10 @@
    lämnas orörda så att Fas 2–12 behåller sitt nuvarande utseende.
    ======================================================================== */
 .phase-block{
-  display:grid; grid-template-columns:44px 1fr; gap:16px;
+  display:grid; grid-template-columns:minmax(0,1fr);
   padding:26px 0; border-top:1px solid var(--line);
 }
 .phase-block > div:last-child{ min-width:0; }
-.phase-number{
-  font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
-  color:var(--brass); padding-top:5px;
-}
 .phase-block h3, .phase-summary h3{
   font-family:'Fraunces',serif; font-size:21px; color:var(--ink);
   margin:0 0 14px 0; font-weight:600;
@@ -488,7 +484,6 @@
 .final-choices span{ padding:8px 10px; border-radius:6px; background:var(--parchment-2); font-size:12px; }
 
 @media (max-width:820px){
-  .phase-block{ grid-template-columns:30px 1fr; gap:8px; }
   .service-grid, .field-grid.three{ grid-template-columns:1fr; }
   .scope-table{ grid-template-columns:1fr 1fr; }
   .scope-table .scope-head:first-child{ display:none; }

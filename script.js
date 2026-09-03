@@ -43,7 +43,7 @@ const SECTIONS = [
       {title:"Räkenskapsinformation", items:[
         {id:"bookkeepingData", text:"Bokföringsdata/SIE och nödvändiga bokföringsunderlag är mottagna", visibleWhen:"existing"},
         {id:"annualMaterial", text:"Senaste bokslut/årsredovisning och relevanta deklarationer är mottagna", visibleWhen:"existing"},
-        {id:"registers", text:"Nödvändiga register och specifikationer, t ex. anläggningsregister är mottagna", visibleWhen:"existing"}
+        {id:"registers", text:"Nödvändiga register och specifikationer är mottagna", visibleWhen:"existing"}
       ]},
       {title:"Ingående läge", items:[
         {id:"openingBalances", text:"Ingående balanser och väsentliga poster är kontrollerade", visibleWhen:"existing"},
@@ -470,13 +470,13 @@ function renderPhaseOnePage(){
     <p class="syfte">Ange ett fåtal grunduppgifter. Verktyget återanvänder dem för att filtrera relevanta alternativ och ge regelverksstöd.</p>
     <div class="progress-wrap" id="progress-kontakt"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} uppgifter ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
 
-    <section class="phase-block"><div class="phase-number">01</div><div><h3>Företagsform <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('companyType','ab','Aktiebolag',phaseOne.companyType==='ab')}${radioCard('companyType','sole','Enskild näringsverksamhet',phaseOne.companyType==='sole')}</div></div></section>
+    <section class="phase-block"><div><h3>Företagsform <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('companyType','ab','Aktiebolag',phaseOne.companyType==='ab')}${radioCard('companyType','sole','Enskild näringsverksamhet',phaseOne.companyType==='sole')}</div></div></section>
 
-    <section class="phase-block"><div class="phase-number">02</div><div><h3>Verksamhetens status <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('businessStatus','new','Nystartad verksamhet',phaseOne.businessStatus==='new')}${radioCard('businessStatus','existing','Befintlig verksamhet',phaseOne.businessStatus==='existing')}</div>${phaseOne.businessStatus ? `<div class="info-box">ⓘ ${phaseOne.businessStatus==='existing'?'Hämta uppgifter från befintliga underlag där det är möjligt, exempelvis senaste årsredovisning eller bokslut.':'Historiska uppgifter saknas. Ange förväntad omfattning om uppgifterna behövs för bedömningen.'}</div>`:''}</div></section>
+    <section class="phase-block"><div><h3>Verksamhetens status <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('businessStatus','new','Nystartad verksamhet',phaseOne.businessStatus==='new')}${radioCard('businessStatus','existing','Befintlig verksamhet',phaseOne.businessStatus==='existing')}</div>${phaseOne.businessStatus ? `<div class="info-box">ⓘ ${phaseOne.businessStatus==='existing'?'Hämta uppgifter från befintliga underlag där det är möjligt, exempelvis senaste årsredovisning eller bokslut.':'Historiska uppgifter saknas. Ange förväntad omfattning om uppgifterna behövs för bedömningen.'}</div>`:''}</div></section>
 
-    <section class="phase-block"><div class="phase-number">03</div><div><h3>Vilka tjänster ska byrån utföra? <span class="required">Minst ett val</span></h3><div class="service-grid">${services.map(([v,l])=>`<label class="service-option"><input type="checkbox" data-p1-service="${v}" ${phaseOne.services.includes(v)?'checked':''}><span class="native-box"></span><span>${l}</span></label>`).join('')}</div>${phaseOne.services.includes('other')?renderOtherServices():''}</div></section>
+    <section class="phase-block"><div><h3>Vilka tjänster ska byrån utföra? <span class="required">Minst ett val</span></h3><div class="service-grid">${services.map(([v,l])=>`<label class="service-option"><input type="checkbox" data-p1-service="${v}" ${phaseOne.services.includes(v)?'checked':''}><span class="native-box"></span><span>${l}</span></label>`).join('')}</div>${phaseOne.services.includes('other')?renderOtherServices():''}</div></section>
 
-    <section class="phase-block"><div class="phase-number">04</div><div><h3>Registreringar och styrande uppgifter</h3><p class="block-help">Några få svar används för att dölja sådant som inte är relevant i senare faser.</p>
+    <section class="phase-block"><div><h3>Registreringar och styrande uppgifter</h3><p class="block-help">Några få svar används för att dölja sådant som inte är relevant i senare faser.</p>
       <div class="compact-choice-stack">
         ${compactYesNo('fTaxRegistered','F-skatt registrerad?',phaseOne.fTaxRegistered)}
         ${phaseOne.services.includes('vat') ? compactYesNo('vatRegistered','Momsregistrerad?',phaseOne.vatRegistered) : ''}
@@ -486,9 +486,9 @@ function renderPhaseOnePage(){
       </div>
     </div></section>
 
-    <section class="phase-block"><div class="phase-number">05</div><div><h3>Verksamhetens omfattning</h3><p class="block-help">Ange uppgifterna från befintliga underlag där det är möjligt. Uppgifterna används för att bedöma vilka regler och alternativ som kan vara aktuella för kunden.</p>${phaseOne.businessStatus==='existing'?historical:phaseOne.businessStatus==='new'?`${expected}<div class="info-box">ⓘ Ange uppskattad omfattning om den är känd. Uppgifterna används endast som underlag för regelverksstöd och kan behöva uppdateras när faktisk omfattning är känd.</div>`:`<div class="empty-state">Välj först om verksamheten är nystartad eller befintlig.</div>`}</div></section>
+    <section class="phase-block"><div><h3>Verksamhetens omfattning</h3><p class="block-help">Ange uppgifterna från befintliga underlag där det är möjligt. Uppgifterna används för att bedöma vilka regler och alternativ som kan vara aktuella för kunden.</p>${phaseOne.businessStatus==='existing'?historical:phaseOne.businessStatus==='new'?`${expected}<div class="info-box">ⓘ Ange uppskattad omfattning om den är känd. Uppgifterna används endast som underlag för regelverksstöd och kan behöva uppdateras när faktisk omfattning är känd.</div>`:`<div class="empty-state">Välj först om verksamheten är nystartad eller befintlig.</div>`}</div></section>
 
-    <section class="phase-block rules"><div class="phase-number">06</div><div><h3>Regelverksstöd</h3><p class="block-help">Detta är automatiskt stöd utifrån uppgifterna ovan. Gör bara ett aktivt val där flera alternativ är möjliga.</p>
+    <section class="phase-block rules"><div><h3>Regelverksstöd</h3><p class="block-help">Detta är automatiskt stöd utifrån uppgifterna ovan. Gör bara ett aktivt val där flera alternativ är möjliga.</p>
       ${phaseOne.companyType==='ab'?renderRuleCard('Revisionsplikt',audit):''}
       ${phaseOne.companyType==='ab'?renderRuleCard('Större företag',large):''}
       ${phaseOne.companyType?`<div class="rule-card"><div class="rule-title">K-regelverk</div><div class="rule-options">${kHtml}</div></div>`:''}
@@ -769,7 +769,7 @@ function renderPhaseTwoPage(){
     : `<div class="risk-clear">🟢 Inga särskilda riskindikatorer identifierade</div>`;
 
   const enhancedHtml = enhancedRequired ? `
-    <section class="phase-block kyc-conditional-section"><div class="phase-number">06</div><div>
+    <section class="phase-block kyc-conditional-section"><div>
       <h3>Skärpta åtgärder</h3>
       <p class="block-help">Visa endast det som behöver göras i det här ärendet. Bocka de åtgärder som faktiskt är relevanta.</p>
       <div class="service-grid single">
@@ -787,7 +787,7 @@ function renderPhaseTwoPage(){
     <p class="syfte">Bekräfta grundkontrollerna. Verktyget visar följdfrågor och riskstöd bara när något behöver utredas vidare.</p>
     <div class="progress-wrap" id="progress-kundkannedom"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} uppgifter ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
 
-    <section class="phase-block"><div class="phase-number">01</div><div>
+    <section class="phase-block"><div>
       <h3>Identitet och behörighet</h3>
       ${kycCheck('identityVerified','Kund och företrädare identifierade och verifierade',phaseTwo.identityVerified)}
       ${renderIdentityDocumentation()}
@@ -795,7 +795,7 @@ function renderPhaseTwoPage(){
       ${phaseTwo.representativeStatus==='yes'?`<div class="conditional-block">${kycCheck('representativeChecked','Ombud och behörighet kontrollerade',phaseTwo.representativeChecked)}</div>`:''}
     </div></section>
 
-    ${showBeneficialOwner?`<section class="phase-block"><div class="phase-number">02</div><div>
+    ${showBeneficialOwner?`<section class="phase-block"><div>
       <h3>Verklig huvudman</h3>
       ${kycCheck('beneficialOwnerInvestigated','Verklig huvudman och ägar-/kontrollstruktur utredd',phaseTwo.beneficialOwnerInvestigated)}
       <div class="mini-question"><strong>Status</strong><div class="choice-row">${kycRadio('beneficialOwnerStatus','identified','Identifierad',phaseTwo.beneficialOwnerStatus)}${kycRadio('beneficialOwnerStatus','none','Ingen finns',phaseTwo.beneficialOwnerStatus)}${kycRadio('beneficialOwnerStatus','unknown','Går inte att fastställa',phaseTwo.beneficialOwnerStatus)}</div></div>
@@ -804,14 +804,14 @@ function renderPhaseTwoPage(){
       ${phaseTwo.complexOwnership==='yes'?`<div class="alert-box warning">🟡 Komplex ägarstruktur läggs automatiskt till som riskindikator.</div>`:''}
     </div></section>`:''}
 
-    <section class="phase-block"><div class="phase-number">03</div><div>
+    <section class="phase-block"><div>
       <h3>Verksamhet och affärsförbindelse</h3>
       ${kycCheck('businessUnderstood','Verksamheten och affärsförbindelsen är tillräckligt förstådda',phaseTwo.businessUnderstood)}
       <div class="phase1-context"><span><small>Företagsform · från Fas 1</small><strong>${safe(p1.type)}</strong></span><span><small>Byråns uppdrag · från Fas 1</small><strong>${safe(p1.selectedServices)}</strong></span><span><small>Omsättning · från Fas 1</small><strong>${safe(p1.turnover)}</strong></span></div>
       ${renderBusinessDetails()}
     </div></section>
 
-    <section class="phase-block"><div class="phase-number">04</div><div>
+    <section class="phase-block"><div>
       <h3>PEP, sanktioner och geografi</h3>
       <div class="kyc-control-row"><div><strong>PEP/RCA-kontroll</strong></div><div class="choice-row compact">${kycRadio('pepResult','none','Ingen träff',phaseTwo.pepResult)}${kycRadio('pepResult','hit','Träff/möjlig träff',phaseTwo.pepResult)}</div></div>
       ${pepFollowup}
@@ -820,7 +820,7 @@ function renderPhaseTwoPage(){
       <div class="mini-question"><strong>Finns relevant koppling till högriskland eller annan tydlig geografisk risk?</strong><div class="choice-row">${kycRadio('geographicRisk','no','Nej',phaseTwo.geographicRisk)}${kycRadio('geographicRisk','yes','Ja',phaseTwo.geographicRisk)}${kycRadio('geographicRisk','unsure','Osäkert',phaseTwo.geographicRisk)}</div></div>
     </div></section>
 
-    <section class="phase-block"><div class="phase-number">05</div><div>
+    <section class="phase-block"><div>
       <h3>Riskbedömning</h3>
       <p class="block-help">Riskindikatorerna är stöd. Du gör alltid den slutliga riskbedömningen.</p>
       <div class="risk-list">${riskHtml}</div>
@@ -830,7 +830,7 @@ function renderPhaseTwoPage(){
 
     ${enhancedHtml}
 
-    <section class="phase-block"><div class="phase-number">07</div><div>
+    <section class="phase-block"><div>
       <h3>Kundkännedom och kundaccept</h3>
       <div class="mini-question"><strong>Är kundkännedomen tillräcklig?</strong><div class="choice-row">${kycRadio('kycSufficient','yes','Ja',phaseTwo.kycSufficient)}${kycRadio('kycSufficient','no','Nej',phaseTwo.kycSufficient)}${kycRadio('kycSufficient','review','Ytterligare utredning krävs',phaseTwo.kycSufficient)}</div></div>
       ${phaseTwo.kycSufficient==='review'?`<div class="conditional-block">${kycTextField('remainingInvestigation','Vad återstår?',phaseTwo.remainingInvestigation,'Kort beskrivning')}</div>`:''}
@@ -1323,6 +1323,8 @@ function ensureState(s){
 }
 
 function sectionPctOf(s, section, p1=phaseOne){
+  // Övertaget är ännu inte bedömt när verksamhetsstatus saknas i Fas 1.
+  if(section.id==='overtag' && !p1.businessStatus) return 0;
   const arr = (s && s[section.id]) || [];
   const visible = visibleFlatIndices(section, p1);
   if(visible.length===0) return 100;
