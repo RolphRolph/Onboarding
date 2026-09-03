@@ -17,8 +17,7 @@ const SECTIONS = [
     syfte:"Bestämma hur uppdraget ska genomföras i praktiken och tydliggöra ansvar mellan kunden och byrån.",
     groups:[
       {title:"Uppdrag och villkor", items:[
-        {id:"scope", text:"Uppdragets omfattning och gränsdragning är fastställd"},
-        {id:"commercial", text:"Pris och kommersiella villkor är fastställda"}
+        {id:"scope", text:"Uppdragets omfattning och gränsdragning är fastställd"}
       ]},
       {title:"Ansvar och samarbete", items:[
         {id:"responsibility", text:"Ansvarsfördelningen mellan kunden och byrån är fastställd"},
@@ -39,10 +38,7 @@ const SECTIONS = [
     syfte:"Säkerställa ett korrekt ekonomiskt utgångsläge och en tydlig övergång till den nya byrån.",
     groups:[
       {title:"Övertag från tidigare byrå", items:[
-        {id:"previousContact", text:"Tidigare byrå är kontaktad och övertagandet är samordnat", visibleWhen:"previousFirm"},
-        {id:"previousIssues", text:"Eventuella problem, tvister, obetalda arvoden eller andra relevanta omständigheter är utredda", visibleWhen:"previousFirm"},
-        {id:"ongoingWork", text:"Pågående arbete, perioder och viktiga deadlines är kartlagda", visibleWhen:"previousFirm"},
-        {id:"previousAccess", text:"Tidigare behörigheter och fullmakter är identifierade och hanterade", visibleWhen:"previousFirm"}
+        {id:"previousContact", text:"Tidigare byrå är kontaktad och övertagandet är samordnat", visibleWhen:"previousFirm"}
       ]},
       {title:"Räkenskapsinformation", items:[
         {id:"bookkeepingData", text:"Bokföringsdata/SIE och nödvändiga bokföringsunderlag är mottagna", visibleWhen:"existing"},
@@ -899,6 +895,11 @@ function blankState(){
 }
 function ensureState(s){
   s = s && typeof s === 'object' ? s : {};
+  // Äldre checklistor hade 10 punkter i Fas 3 och 9 i Fas 4. Ta bort endast
+  // de utgångna positionerna så att kvarvarande punkter behåller rätt bockar.
+  // Längdkontrollen hindrar att anpassningen upprepas för redan uppdaterad data.
+  if(Array.isArray(s.avtal) && s.avtal.length === 10) s.avtal.splice(1, 1);
+  if(Array.isArray(s.overtag) && s.overtag.length === 9) s.overtag.splice(1, 3);
   SECTIONS.forEach(sec=>{
     const n = flatCount(sec);
     if(!Array.isArray(s[sec.id]) || s[sec.id].length!==n){
