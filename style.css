@@ -635,3 +635,31 @@
 .item:has(input:focus-visible), .choice-card:has(input:focus-visible), .service-option:has(input:focus-visible), .rule-option:has(input:focus-visible){
   outline:2px solid var(--ink); outline-offset:3px;
 }
+
+/* ---------- EXTRA TJÄNSTER OCH BESKRIVNINGARNAS LÄSLÄGE ---------- */
+.other-services, .business-details{ margin-top:12px; }
+.text-editor-actions, .other-service-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.text-editor-actions{ margin-top:10px; }
+.text-editor-button{
+  border:1px solid var(--brass); border-radius:5px; padding:8px 14px;
+  background:var(--ink); color:var(--text-light); font:inherit; font-size:13px; cursor:pointer;
+}
+.text-editor-link{
+  border:0; padding:5px 0; background:none; color:var(--ink);
+  font:inherit; font-size:12.5px; text-decoration:underline; text-underline-offset:3px; cursor:pointer;
+}
+.text-editor-button:disabled, .text-editor-link:disabled{ opacity:.5; cursor:default; }
+.text-editor-button:focus-visible, .text-editor-link:focus-visible{ outline:2px solid var(--ink); outline-offset:3px; }
+.other-service-list{ margin:14px 0 6px; padding-left:20px; }
+.other-service-list li{ padding:8px 0; border-bottom:1px dotted var(--line); font-size:13.5px; }
+.other-service-list li > span:first-child{ display:block; overflow-wrap:anywhere; white-space:pre-wrap; }
+.other-service-actions{ gap:16px; }
+.business-details-summary{ margin:0; }
+.business-details-summary > div{ display:grid; grid-template-columns:minmax(130px,1fr) minmax(0,2fr); gap:16px; padding:10px 0; border-bottom:1px dotted var(--line); }
+.business-details-summary dt{ font-size:12.5px; font-weight:600; }
+.business-details-summary dd{ margin:0; font-size:13.5px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+.text-editor-empty{ color:var(--text-dim); }
+@media (max-width:560px){
+  .business-details-summary > div{ grid-template-columns:1fr; gap:4px; }
+  .text-editor-button, .text-editor-link{ min-height:40px; }
+}

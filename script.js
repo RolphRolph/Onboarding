@@ -138,6 +138,8 @@ function blankPhaseOne(){
     businessStatus: "",              // "new" | "existing"
     services: [],                     // bookkeeping, vat, payroll, annual, tax, other
     otherService: "",
+    otherServices: [],                // Tillagda tjänster; otherService används som sparat utkast.
+    otherServiceEditIndex: null,       // null = stängt, -1 = ny tjänst, annars index för pågående redigering.
     // Kompakta registrerings- och styrfrågor som används för att filtrera Fas 3–6.
     vatRegistered: "",                // "yes" | "no"
     employerRegistered: "",           // "yes" | "no"
@@ -154,10 +156,18 @@ function blankPhaseOne(){
 function ensurePhaseOne(data){
   const base = blankPhaseOne();
   const d = data && typeof data === 'object' ? data : {};
+  // Äldre fritext blir en enda listpost. En befintlig lista (även tom) migreras aldrig igen.
+  const hasServiceList = Array.isArray(d.otherServices);
+  const otherServices = hasServiceList ? d.otherServices.filter(value=>typeof value==='string' && value.trim())
+    : typeof d.otherService==='string' && d.otherService.trim() ? [d.otherService] : [];
+  const editIndex = d.otherServiceEditIndex;
   return {
     ...base,
     ...d,
     services: Array.isArray(d.services) ? d.services : [],
+    otherServices,
+    otherService: hasServiceList && typeof d.otherService==='string' ? d.otherService : '',
+    otherServiceEditIndex: Number.isInteger(editIndex) && editIndex>=-1 && editIndex<otherServices.length ? editIndex : null,
     latest: {...base.latest, ...(d.latest || {})},
     previous: {...base.previous, ...(d.previous || {})},
     expected: {...base.expected, ...(d.expected || {})},
@@ -470,7 +480,7 @@ function renderPhaseOnePage(){
 
     <section class="phase-block"><div class="phase-number">02</div><div><h3>Verksamhetens status <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('businessStatus','new','Nystartad verksamhet',phaseOne.businessStatus==='new')}${radioCard('businessStatus','existing','Befintlig verksamhet',phaseOne.businessStatus==='existing')}</div>${phaseOne.businessStatus ? `<div class="info-box">ⓘ ${phaseOne.businessStatus==='existing'?'Hämta uppgifter från befintliga underlag där det är möjligt, exempelvis senaste årsredovisning eller bokslut.':'Historiska uppgifter saknas. Ange förväntad omfattning om uppgifterna behövs för bedömningen.'}</div>`:''}</div></section>
 
-    <section class="phase-block"><div class="phase-number">03</div><div><h3>Vilka tjänster ska byrån utföra? <span class="required">Minst ett val</span></h3><div class="service-grid">${services.map(([v,l])=>`<label class="service-option"><input type="checkbox" data-p1-service="${v}" ${phaseOne.services.includes(v)?'checked':''}><span class="native-box"></span><span>${l}</span></label>`).join('')}</div>${phaseOne.services.includes('other')?`<label class="field other-field"><span>Beskriv annan tjänst</span><input type="text" data-p1-other value="${safe(phaseOne.otherService)}" placeholder="Annan tjänst"></label>`:''}</div></section>
+    <section class="phase-block"><div class="phase-number">03</div><div><h3>Vilka tjänster ska byrån utföra? <span class="required">Minst ett val</span></h3><div class="service-grid">${services.map(([v,l])=>`<label class="service-option"><input type="checkbox" data-p1-service="${v}" ${phaseOne.services.includes(v)?'checked':''}><span class="native-box"></span><span>${l}</span></label>`).join('')}</div>${phaseOne.services.includes('other')?renderOtherServices():''}</div></section>
 
     <section class="phase-block"><div class="phase-number">04</div><div><h3>Registreringar och styrande uppgifter</h3><p class="block-help">Några få svar används för att dölja sådant som inte är relevant i senare faser.</p>
       <div class="compact-choice-stack">
@@ -530,8 +540,7 @@ function bindPhaseOneEvents(){
     phaseOne.choices[el.dataset.p1Choice] = el.value;
     savePhaseOne(); renderMain(); renderSidebar();
   }));
-  const other = page.querySelector('[data-p1-other]');
-  if(other) other.addEventListener('input', ()=>{ phaseOne.otherService = other.value; savePhaseOne(); refreshChecklistUI(); renderSidebar(); });
+  bindOtherServiceEvents(page);
 }
 
 /* ============ FAS 2: KUNDKÄNNEDOM OCH RISKBEDÖMNING ============
@@ -560,6 +569,7 @@ function blankPhaseTwo(){
     businessDescription: "",
     revenueModel: "",
     expectedTransactions: "",
+    businessDetailsEditing: true,     // Endast visningsläge; påverkar inte om uppgifterna är ifyllda.
 
     pepCheckCompleted: false,
     pepResult: "",                   // "none" | "hit"
@@ -590,6 +600,7 @@ function ensurePhaseTwo(data){
   return {
     ...base,
     ...d,
+    businessDetailsEditing: d.businessDetailsEditing !== false,
     enhancedMeasures: {...base.enhancedMeasures, ...(d.enhancedMeasures || {})}
   };
 }
@@ -757,7 +768,7 @@ function renderPhaseTwoPage(){
       <h3>Verksamhet och affärsförbindelse</h3>
       ${kycCheck('businessUnderstood','Verksamheten och affärsförbindelsen är tillräckligt förstådda',phaseTwo.businessUnderstood)}
       <div class="phase1-context"><span><small>Företagsform · från Fas 1</small><strong>${safe(p1.type)}</strong></span><span><small>Byråns uppdrag · från Fas 1</small><strong>${safe(p1.selectedServices)}</strong></span><span><small>Omsättning · från Fas 1</small><strong>${safe(p1.turnover)}</strong></span></div>
-      <div class="field-grid three kyc-fields">${kycTextField('businessDescription','Verksamhet',phaseTwo.businessDescription,'Kort beskrivning')}${kycTextField('revenueModel','Huvudsakliga intäkter',phaseTwo.revenueModel,'Hur får företaget sina intäkter?')}${kycTextField('expectedTransactions','Normala transaktioner',phaseTwo.expectedTransactions,'Kort beskrivning')}</div>
+      ${renderBusinessDetails()}
     </div></section>
 
     <section class="phase-block"><div class="phase-number">04</div><div>
@@ -833,8 +844,111 @@ function bindPhaseTwoEvents(){
     phaseTwo.enhancedMeasures[el.dataset.p2Enhanced] = el.checked;
     savePhaseTwo(); renderMain(); renderSidebar();
   }));
+  page.querySelector('[data-business-toggle]')?.addEventListener('click', ()=>{
+    phaseTwo.businessDetailsEditing = !phaseTwo.businessDetailsEditing;
+    savePhaseTwo();
+    refreshTextEditors(phaseTwo.businessDetailsEditing ? '[data-p2-text="businessDescription"]' : '[data-business-toggle]');
+  });
 }
 
+
+/* ============ EXTRA TJÄNSTER OCH BESKRIVNINGARNAS LÄSLÄGE ============ */
+const BUSINESS_DETAIL_FIELDS = [
+  {key:'businessDescription',label:'Verksamhet',placeholder:'Kort beskrivning'},
+  {key:'revenueModel',label:'Huvudsakliga intäkter',placeholder:'Hur får företaget sina intäkter?'},
+  {key:'expectedTransactions',label:'Normala transaktioner',placeholder:'Kort beskrivning'}
+];
+
+function otherServiceEditorOpen(){
+  return phaseOne.otherServiceEditIndex!==null || !phaseOne.otherServices.length || phaseOne.otherService!=='';
+}
+
+function refreshTextEditors(focusSelector){
+  renderMain(); renderSidebar();
+  if(focusSelector) mainEl.querySelector(focusSelector)?.focus({preventScroll:true});
+}
+
+function renderOtherServices(){
+  const open = otherServiceEditorOpen();
+  const editing = phaseOne.otherServiceEditIndex!==null && phaseOne.otherServiceEditIndex>=0;
+  return `<div class="other-services" data-other-services role="group" aria-label="Andra tjänster">
+    ${open?`<div class="other-service-editor">
+      <label class="field other-field"><span>${editing?'Ändra tjänst':'Beskriv annan tjänst'}</span><input type="text" data-p1-other value="${safe(phaseOne.otherService)}" placeholder="Annan tjänst"></label>
+      <div class="text-editor-actions"><button type="button" class="text-editor-button" data-other-service-save ${phaseOne.otherService.trim()?'':'disabled'}>${editing?'Spara ändring':'Lägg till'}</button>${phaseOne.otherServices.length?'<button type="button" class="text-editor-link" data-other-service-cancel>Avbryt</button>':''}</div>
+    </div>`:''}
+    ${phaseOne.otherServices.length?`<ul class="other-service-list">${phaseOne.otherServices.map((text,index)=>`<li>
+      <span>${safe(text)}</span><span class="other-service-actions">
+        <button type="button" class="text-editor-link" data-other-service-edit="${index}" aria-label="Ändra tjänsten ${safe(text)}" ${open?'disabled title="Avsluta pågående redigering först"':''}>Ändra</button>
+        <button type="button" class="text-editor-link" data-other-service-delete="${index}" aria-label="Ta bort tjänsten ${safe(text)}" ${open?'disabled title="Avsluta pågående redigering först"':''}>Ta bort</button>
+      </span></li>`).join('')}</ul>`:''}
+    ${!open?'<button type="button" class="text-editor-link" data-other-service-add>+ Lägg till ytterligare tjänst</button>':''}
+  </div>`;
+}
+
+function commitOtherService(){
+  const text = phaseOne.otherService.trim();
+  if(!text) return false;
+  const index = phaseOne.otherServiceEditIndex;
+  if(index!==null && index>=0){
+    if(index>=phaseOne.otherServices.length) return false;
+    phaseOne.otherServices[index] = text;
+  }else{
+    phaseOne.otherServices.push(text);
+  }
+  phaseOne.otherService = '';
+  phaseOne.otherServiceEditIndex = null;
+  savePhaseOne();
+  refreshTextEditors('[data-other-service-add]');
+  return true;
+}
+
+function beginOtherService(index=-1){
+  // Ett utkast får inte skrivas över genom att en annan rad öppnas samtidigt.
+  if(otherServiceEditorOpen() || !Number.isInteger(index) || index < -1 || index>=phaseOne.otherServices.length) return;
+  phaseOne.otherServiceEditIndex = index;
+  phaseOne.otherService = index>=0 ? phaseOne.otherServices[index] : '';
+  savePhaseOne();
+  refreshTextEditors('[data-p1-other]');
+}
+
+function removeOtherService(index){
+  if(otherServiceEditorOpen() || !Number.isInteger(index) || index<0 || index>=phaseOne.otherServices.length) return;
+  phaseOne.otherServices.splice(index,1);
+  savePhaseOne();
+  refreshTextEditors(phaseOne.otherServices.length?'[data-other-service-add]':'[data-p1-other]');
+}
+
+function bindOtherServiceEvents(page){
+  const input = page.querySelector('[data-p1-other]');
+  if(input){
+    input.addEventListener('input', ()=>{
+      phaseOne.otherService = input.value;
+      if(phaseOne.otherServiceEditIndex===null) phaseOne.otherServiceEditIndex = -1;
+      savePhaseOne(); refreshChecklistUI(); renderSidebar();
+      page.querySelector('[data-other-service-save]').disabled = !input.value.trim();
+    });
+    input.addEventListener('keydown', event=>{
+      if(event.key==='Enter' && !event.isComposing){ event.preventDefault(); commitOtherService(); }
+    });
+  }
+  page.querySelector('[data-other-service-save]')?.addEventListener('click', commitOtherService);
+  page.querySelector('[data-other-service-add]')?.addEventListener('click', ()=>beginOtherService());
+  page.querySelector('[data-other-service-cancel]')?.addEventListener('click', ()=>{
+    phaseOne.otherService = ''; phaseOne.otherServiceEditIndex = null;
+    savePhaseOne(); refreshTextEditors('[data-other-service-add]');
+  });
+  page.querySelectorAll('[data-other-service-edit]').forEach(button=>button.addEventListener('click', ()=>beginOtherService(Number(button.dataset.otherServiceEdit))));
+  page.querySelectorAll('[data-other-service-delete]').forEach(button=>button.addEventListener('click', ()=>removeOtherService(Number(button.dataset.otherServiceDelete))));
+}
+
+function renderBusinessDetails(){
+  const editing = phaseTwo.businessDetailsEditing;
+  return `<div class="business-details" data-business-details>
+    ${editing?`<div class="field-grid three kyc-fields">${BUSINESS_DETAIL_FIELDS.map(field=>`<div data-business-detail="${field.key}" id="question-kundkannedom-${field.key}">${kycTextField(field.key,field.label,phaseTwo[field.key],field.placeholder)}</div>`).join('')}</div>`
+      : `<dl class="business-details-summary">${BUSINESS_DETAIL_FIELDS.map(field=>`<div data-business-detail="${field.key}" id="question-kundkannedom-${field.key}"><dt>${field.label}</dt><dd>${String(phaseTwo[field.key] ?? '').trim()?safe(phaseTwo[field.key]):'<span class="text-editor-empty">Inte ifyllt</span>'}</dd></div>`).join('')}</dl>`}
+    <div class="text-editor-actions"><button type="button" class="${editing?'text-editor-button':'text-editor-link'}" data-business-toggle>${editing?'Klar':'Ändra'}</button></div>
+  </div>`;
+}
 
 /* ============ OBLIGATORISKA UPPGIFTER OCH LÄNKAR ============
    En fråga ger en post, även när den innehåller flera svarsalternativ.
@@ -850,7 +964,7 @@ function phaseOneRequirements(data){
   radio('companyType','Företagsform');
   radio('businessStatus','Verksamhetens status');
   add('services','Byråns uppdrag – välj minst en tjänst','[data-p1-service]',p.services.length);
-  if(p.services.includes('other')) add('otherService','Beskriv annan tjänst','[data-p1-other]',String(p.otherService ?? '').trim());
+  if(p.services.includes('other')) add('otherService','Lägg till minst en annan tjänst','[data-other-services]',p.otherServices.length);
   radio('fTaxRegistered','F-skatt registrerad?');
   if(p.services.includes('vat')) radio('vatRegistered','Momsregistrerad?');
   if(p.services.includes('payroll')) radio('employerRegistered','Arbetsgivarregistrerad?');
@@ -879,7 +993,7 @@ function phaseTwoRequirements(data){
   const add = (key,label,attribute,done)=>items.push({key,label,selector:`[${attribute}="${key}"]`,done:!!done});
   const check = (key,label)=>add(key,label,'data-p2-check',p[key]);
   const radio = (key,label)=>add(key,label,'data-p2-field',p[key]);
-  const text = (key,label)=>add(key,label,'data-p2-text',String(p[key] ?? '').trim());
+  const text = (key,label)=>add(key,label,BUSINESS_DETAIL_FIELDS.some(field=>field.key===key)?'data-business-detail':'data-p2-text',String(p[key] ?? '').trim());
   check('identityVerified','Kund och företrädare identifierade och verifierade');
   text('identitySource','Identitetskontroll – källa');
   text('identityDate','Identitetskontroll – kontrolldatum');
@@ -972,9 +1086,17 @@ let remainingHighlightTimer;
 function onRemainingTaskLink(event){
   const link = event.target.closest('a[data-remaining-link]');
   if(!link || !mainEl.contains(link)) return;
-  const target = document.getElementById(link.getAttribute('href').slice(1));
+  const targetId = link.getAttribute('href').slice(1);
+  let target = document.getElementById(targetId);
   if(!target) return;
   event.preventDefault();
+  // Ett länkmål finns i båda lägena; öppna redigeringen innan det saknade fältet fokuseras.
+  if(target.closest('[data-business-details]') && !phaseTwo.businessDetailsEditing){
+    phaseTwo.businessDetailsEditing = true;
+    savePhaseTwo(); renderMain(); renderSidebar();
+    target = document.getElementById(targetId);
+    if(!target) return;
+  }
   for(let parent=target.parentElement; parent; parent=parent.parentElement){
     if(parent.tagName==='DETAILS') parent.open = true;
   }
