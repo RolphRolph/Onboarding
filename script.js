@@ -196,8 +196,8 @@ function formatMoney(value){
   return n === null ? "–" : new Intl.NumberFormat('sv-SE', {maximumFractionDigits:0}).format(n) + " kr";
 }
 
-function phaseOneScope(){
-  return phaseOne.businessStatus === 'new' ? phaseOne.expected : phaseOne.latest;
+function phaseOneScope(p=phaseOne){
+  return p.businessStatus === 'new' ? p.expected : p.latest;
 }
 
 function getRangeDefinition(type, value){
@@ -236,8 +236,8 @@ function rangeExceedsThreshold(type, value, threshold){
   return range.minExclusive !== null && range.minExclusive >= threshold;
 }
 
-function hasCompleteHistoricalData(){
-  return ['turnover','balance','employees'].every(k => hasRangeValue(k, phaseOne.latest[k]) && hasRangeValue(k, phaseOne.previous[k]));
+function hasCompleteHistoricalData(p=phaseOne){
+  return ['turnover','balance','employees'].every(k => hasRangeValue(k, p.latest[k]) && hasRangeValue(k, p.previous[k]));
 }
 
 function countExceeded(year, limits){
@@ -261,14 +261,14 @@ function calculateAuditRequirement(){
   };
 }
 
-function calculateLargeCompanyStatus(){
-  if(phaseOne.companyType !== 'ab') return {status:'na', label:'Inte aktuellt', detail:'Storleksstödet visas här för aktiebolag.'};
-  if(phaseOne.businessStatus !== 'existing' || !hasCompleteHistoricalData()){
+function calculateLargeCompanyStatus(p=phaseOne){
+  if(p.companyType !== 'ab') return {status:'na', label:'Inte aktuellt', detail:'Storleksstödet visas här för aktiebolag.'};
+  if(p.businessStatus !== 'existing' || !hasCompleteHistoricalData(p)){
     return {status:'review', label:'Kan inte slutligt bedömas', detail:'Två kompletta historiska räkenskapsår krävs för den automatiska tvåårsbedömningen.'};
   }
   const limits = {turnover:80000000, balance:40000000, employees:50};
-  const a = countExceeded(phaseOne.latest, limits);
-  const b = countExceeded(phaseOne.previous, limits);
+  const a = countExceeded(p.latest, limits);
+  const b = countExceeded(p.previous, limits);
   const large = a >= 2 && b >= 2;
   return {
     status: large ? 'blocked' : 'possible',
@@ -277,12 +277,12 @@ function calculateLargeCompanyStatus(){
   };
 }
 
-function calculateK1Eligibility(){
-  if(phaseOne.companyType !== 'sole') return {visible:false, status:'na', label:'Inte aktuellt', detail:'K1-stödet gäller här endast enskild näringsverksamhet.'};
-  if(!phaseOne.businessStatus) return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange verksamhetens status och nettoomsättning för att få K1-stöd.'};
+function calculateK1Eligibility(p=phaseOne){
+  if(p.companyType !== 'sole') return {visible:false, status:'na', label:'Inte aktuellt', detail:'K1-stödet gäller här endast enskild näringsverksamhet.'};
+  if(!p.businessStatus) return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange verksamhetens status och nettoomsättning för att få K1-stöd.'};
 
-  if(phaseOne.businessStatus === 'new'){
-    const turnover = phaseOne.expected.turnover;
+  if(p.businessStatus === 'new'){
+    const turnover = p.expected.turnover;
     if(!hasRangeValue('turnover', turnover)) return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange förväntad nettoomsättning för att få K1-stöd.'};
     const overThree = rangeExceedsThreshold('turnover', turnover, 3000000);
     return overThree
@@ -290,8 +290,8 @@ function calculateK1Eligibility(){
       : {visible:true, status:'possible', label:'Kan vara möjligt', detail:'Den förväntade nettoomsättningen ligger inom K1:s omsättningsgräns på högst 3 mkr. Övriga förutsättningar behöver också vara uppfyllda.'};
   }
 
-  const latest = phaseOne.latest.turnover;
-  const previous = phaseOne.previous.turnover;
+  const latest = p.latest.turnover;
+  const previous = p.previous.turnover;
   if(!hasRangeValue('turnover', latest) || !hasRangeValue('turnover', previous)){
     return {visible:true, status:'review', label:'Kan inte bedömas ännu', detail:'Ange nettoomsättning för båda räkenskapsåren för att få K1-stöd.'};
   }
@@ -307,17 +307,17 @@ function calculateK1Eligibility(){
   return {visible:true, status:'blocked', label:'Inte möjligt utifrån angiven omsättning', detail:'Nettoomsättningen överstiger 3 mkr under båda angivna räkenskapsåren.'};
 }
 
-function getAvailableKRules(){
-  const large = calculateLargeCompanyStatus();
-  if(phaseOne.companyType === 'ab'){
+function getAvailableKRules(p=phaseOne){
+  const large = calculateLargeCompanyStatus(p);
+  if(p.companyType === 'ab'){
     return [
       {value:'K1', state:'disabled', disabled:true, note:'Ej tillämpligt för aktiebolag'},
       {value:'K2', state: large.status === 'blocked' ? 'review' : 'possible', note: large.status === 'blocked' ? 'Kräver ytterligare bedömning utifrån företagets storlek och övriga förutsättningar' : 'Kan vara möjligt'},
       {value:'K3', state:'possible', note:'Kan vara möjligt'}
     ];
   }
-  if(phaseOne.companyType === 'sole'){
-    const k1 = calculateK1Eligibility();
+  if(p.companyType === 'sole'){
+    const k1 = calculateK1Eligibility(p);
     return [
       {value:'K1', state:k1.status, disabled:k1.status === 'blocked', note:k1.status === 'possible' ? k1.label : `${k1.label}. ${k1.detail}`},
       {value:'K2', state:'review', note:'Kräver bedömning av tillämplighet'},
@@ -327,8 +327,8 @@ function getAvailableKRules(){
   return [];
 }
 
-function getAvailableAccountingMethods(){
-  const turnover = phaseOneScope().turnover;
+function getAvailableAccountingMethods(p=phaseOne){
+  const turnover = phaseOneScope(p).turnover;
   if(!hasRangeValue('turnover', turnover)) return {status:'review', message:'Ange nettoomsättning för att få stöd om bokföringsmetod.', options:[{value:'cash',label:'Kontantmetoden',disabled:true},{value:'invoice',label:'Faktureringsmetoden',disabled:false}]};
   const cashPossible = rangeExceedsThreshold('turnover', turnover, 3000000) === false;
   return {
@@ -338,9 +338,9 @@ function getAvailableAccountingMethods(){
   };
 }
 
-function getAvailableVatPeriods(){
-  if(!phaseOne.services.includes('vat')) return {visible:false, options:[]};
-  const turnover = phaseOneScope().turnover;
+function getAvailableVatPeriods(p=phaseOne){
+  if(!p.services.includes('vat')) return {visible:false, options:[]};
+  const turnover = phaseOneScope(p).turnover;
   if(!hasRangeValue('turnover', turnover)) return {visible:true, status:'review', message:'Ange nettoomsättning för att se möjliga momsperioder.', options:[]};
   const options = [
     {value:'year', label:'År', disabled:rangeExceedsThreshold('turnover', turnover, 1000000) === true},
@@ -372,25 +372,7 @@ function calculateSimplifiedAnnualReportEligibility(){
 }
 
 function phaseOneCountsOf(data){
-  const p = ensurePhaseOne(data);
-  const company = !!p.companyType;
-  const status = !!p.businessStatus;
-  const services = p.services.length > 0;
-  const scope = p.businessStatus === 'existing'
-    ? ['turnover','balance','employees'].every(k => hasRangeValue(k, p.latest[k]) && hasRangeValue(k, p.previous[k]))
-    : ['turnover','balance','employees'].some(k => hasRangeValue(k, p.expected[k]));
-
-  // Registreringar räknas som en kompakt del. Moms/arbetsgivare krävs bara när uppdraget gör dem relevanta.
-  const registrationChecks = [!!p.fTaxRegistered];
-  if(p.services.includes('vat')) registrationChecks.push(!!p.vatRegistered);
-  if(p.services.includes('payroll')) registrationChecks.push(!!p.employerRegistered);
-  const registrations = registrationChecks.every(Boolean);
-
-  // Dessa två svar styr framför allt vilka arbetsmoment som visas senare i onboardingen.
-  const steering = !!p.foreignActivity && (p.businessStatus !== 'existing' || !!p.previousFirm);
-
-  const checks = [company,status,services,scope,registrations,steering];
-  return {done:checks.filter(Boolean).length,total:checks.length};
+  return requirementCounts(phaseOneRequirements(data));
 }
 function phaseOneCounts(){ return phaseOneCountsOf(phaseOne); }
 
@@ -482,7 +464,7 @@ function renderPhaseOnePage(){
     <div class="page-eyebrow">Onboarding · Steg 1 av 6</div>
     <h2>Företagsuppgifter och uppdragsprofil</h2>
     <p class="syfte">Ange ett fåtal grunduppgifter. Verktyget återanvänder dem för att filtrera relevanta alternativ och ge regelverksstöd.</p>
-    <div class="progress-wrap"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} grunddelar ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
+    <div class="progress-wrap" id="progress-kontakt"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} uppgifter ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
 
     <section class="phase-block"><div class="phase-number">01</div><div><h3>Företagsform <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('companyType','ab','Aktiebolag',phaseOne.companyType==='ab')}${radioCard('companyType','sole','Enskild näringsverksamhet',phaseOne.companyType==='sole')}</div></div></section>
 
@@ -549,7 +531,7 @@ function bindPhaseOneEvents(){
     savePhaseOne(); renderMain(); renderSidebar();
   }));
   const other = page.querySelector('[data-p1-other]');
-  if(other) other.addEventListener('input', ()=>{ phaseOne.otherService = other.value; savePhaseOne(); });
+  if(other) other.addEventListener('input', ()=>{ phaseOne.otherService = other.value; savePhaseOne(); refreshChecklistUI(); renderSidebar(); });
 }
 
 /* ============ FAS 2: KUNDKÄNNEDOM OCH RISKBEDÖMNING ============
@@ -656,17 +638,9 @@ function canAcceptCustomer(data = phaseTwo){
   return {allowed:true, reason:''};
 }
 
-/* Progressen bygger bara på de viktigaste besluten. Detaljfälten skapar inte extra administration. */
+/* Samma obligatoriska frågor används i progressen och i listan över det som återstår. */
 function phaseTwoCountsOf(data){
-  const p = ensurePhaseTwo(data);
-  const identity = p.identityVerified && !!p.representativeStatus && (p.representativeStatus === 'no' || p.representativeChecked);
-  const beneficialOwner = p.beneficialOwnerInvestigated && !!p.beneficialOwnerStatus && !!p.complexOwnership;
-  const business = p.businessUnderstood;
-  const controls = p.pepCheckCompleted && !!p.pepResult && p.sanctionsCheckCompleted && !!p.sanctionsResult && !!p.geographicRisk;
-  const risk = !!p.riskLevel && !!p.riskReason.trim();
-  const acceptance = !!p.kycSufficient && !!p.acceptanceDecision && (p.acceptanceDecision !== 'accept' || canAcceptCustomer(p).allowed);
-  const checks = [identity, beneficialOwner, business, controls, risk, acceptance];
-  return {done:checks.filter(Boolean).length, total:checks.length};
+  return requirementCounts(phaseTwoRequirements(data));
 }
 function phaseTwoCounts(){ return phaseTwoCountsOf(phaseTwo); }
 
@@ -760,7 +734,7 @@ function renderPhaseTwoPage(){
     <div class="page-eyebrow">Onboarding · Steg 2 av 6</div>
     <h2>Kundkännedom</h2>
     <p class="syfte">Bekräfta grundkontrollerna. Verktyget visar följdfrågor och riskstöd bara när något behöver utredas vidare.</p>
-    <div class="progress-wrap"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} huvuddelar klara</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
+    <div class="progress-wrap" id="progress-kundkannedom"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} uppgifter ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
 
     <section class="phase-block"><div class="phase-number">01</div><div>
       <h3>Identitet och behörighet</h3>
@@ -850,9 +824,9 @@ function bindPhaseTwoEvents(){
     el.addEventListener('input', ()=>{
       phaseTwo[el.dataset.p2Text] = el.value;
       savePhaseTwo();
+      // Uppdatera återstående uppgifter utan att ersätta fältet eller stänga dokumentationen.
+      refreshChecklistUI(); renderSidebar();
     });
-    // Uppdatera progress/sammanfattning när användaren lämnar fältet, utan att störa skrivandet.
-    el.addEventListener('change', ()=>{ renderMain(); renderSidebar(); });
   });
 
   page.querySelectorAll('[data-p2-enhanced]').forEach(el=>el.addEventListener('change', ()=>{
@@ -861,6 +835,174 @@ function bindPhaseTwoEvents(){
   }));
 }
 
+
+/* ============ OBLIGATORISKA UPPGIFTER OCH LÄNKAR ============
+   En fråga ger en post, även när den innehåller flera svarsalternativ.
+   Villkorade fält tas med först när de visas. Kundernas lagringsformat ändras inte. */
+function requirementCounts(items){
+  return {done:items.filter(item=>item.done).length, total:items.length};
+}
+
+function phaseOneRequirements(data){
+  const p = ensurePhaseOne(data), items = [];
+  const add = (key, label, selector, done)=>items.push({key,label,selector,done:!!done});
+  const radio = (key, label)=>add(key,label,`[data-p1="${key}"]`,p[key]);
+  radio('companyType','Företagsform');
+  radio('businessStatus','Verksamhetens status');
+  add('services','Byråns uppdrag – välj minst en tjänst','[data-p1-service]',p.services.length);
+  if(p.services.includes('other')) add('otherService','Beskriv annan tjänst','[data-p1-other]',String(p.otherService ?? '').trim());
+  radio('fTaxRegistered','F-skatt registrerad?');
+  if(p.services.includes('vat')) radio('vatRegistered','Momsregistrerad?');
+  if(p.services.includes('payroll')) radio('employerRegistered','Arbetsgivarregistrerad?');
+  if(p.businessStatus==='existing') radio('previousFirm','Tidigare redovisningsbyrå?');
+  radio('foreignActivity','Utlandsverksamhet, import eller export?');
+  const periods = p.businessStatus==='existing' ? [['latest','senaste räkenskapsåret'],['previous','föregående räkenskapsåret']]
+    : p.businessStatus==='new' ? [['expected','förväntat']] : [];
+  periods.forEach(([period,label])=>{
+    [['turnover','Nettoomsättning'],['balance','Balansomslutning'],['employees','Medelantal anställda']].forEach(([field,title])=>{
+      const key = `${period}.${field}`;
+      add(key,`${title} – ${label}`,`[data-p1-path="${key}"]`,hasRangeValue(field,p[period][field]));
+    });
+  });
+  const choice = (key,label,options)=>{
+    const available = options.filter(o=>!o.disabled && o.state!=='disabled');
+    if(available.length) add(key,label,`[data-p1-choice="${key}"]`,available.some(o=>o.value===p.choices[key]));
+  };
+  choice('kRule','K-regelverk',getAvailableKRules(p));
+  if(p.businessStatus) choice('accountingMethod','Bokföringsmetod',getAvailableAccountingMethods(p).options);
+  choice('vatPeriod','Momsperiod',getAvailableVatPeriods(p).options);
+  return items;
+}
+
+function phaseTwoRequirements(data){
+  const p = ensurePhaseTwo(data), items = [];
+  const add = (key,label,attribute,done)=>items.push({key,label,selector:`[${attribute}="${key}"]`,done:!!done});
+  const check = (key,label)=>add(key,label,'data-p2-check',p[key]);
+  const radio = (key,label)=>add(key,label,'data-p2-field',p[key]);
+  const text = (key,label)=>add(key,label,'data-p2-text',String(p[key] ?? '').trim());
+  check('identityVerified','Kund och företrädare identifierade och verifierade');
+  text('identitySource','Identitetskontroll – källa');
+  text('identityDate','Identitetskontroll – kontrolldatum');
+  radio('representativeStatus','Finns ombud/fullmakt?');
+  if(p.representativeStatus==='yes') check('representativeChecked','Ombud och behörighet kontrollerade');
+  check('beneficialOwnerInvestigated','Verklig huvudman och ägar-/kontrollstruktur utredd');
+  radio('beneficialOwnerStatus','Verklig huvudman – status');
+  if(p.beneficialOwnerStatus==='identified') text('beneficialOwnerName','Namn på verklig huvudman');
+  if(p.beneficialOwnerStatus==='none') text('noBeneficialOwnerReason','Motivering till att verklig huvudman saknas');
+  if(p.beneficialOwnerStatus==='unknown') text('alternativeBeneficialOwner','Alternativ verklig huvudman');
+  radio('complexOwnership','Komplex eller svåröverskådlig ägarstruktur?');
+  check('businessUnderstood','Verksamheten och affärsförbindelsen är tillräckligt förstådda');
+  text('businessDescription','Verksamhet – kort beskrivning');
+  text('revenueModel','Huvudsakliga intäkter');
+  text('expectedTransactions','Normala transaktioner');
+  check('pepCheckCompleted','PEP/RCA-kontroll genomförd');
+  radio('pepResult','Resultat av PEP/RCA-kontrollen');
+  check('sanctionsCheckCompleted','Sanktionskontroll genomförd');
+  radio('sanctionsResult','Resultat av sanktionskontrollen');
+  radio('geographicRisk','Koppling till högriskland eller annan geografisk risk?');
+  radio('riskLevel','Risknivå');
+  text('riskReason','Riskbedömning – kort motivering');
+  if(isEnhancedDueDiligenceRequired(p)){
+    // De två åtgärder som uttryckligen anges som "när relevant" är fortsatt bedömningsberoende.
+    [['additionalInformation','Ytterligare information har inhämtats'],['risksInvestigated','Identifierade risker har utretts'],['approval','Nödvändigt godkännande har inhämtats']].forEach(([key,label])=>{
+      add(key,label,'data-p2-enhanced',p.enhancedMeasures[key]);
+    });
+  }
+  radio('kycSufficient','Är kundkännedomen tillräcklig?');
+  if(p.kycSufficient==='review') text('remainingInvestigation','Kundkännedom – vad återstår att utreda?');
+  add('acceptanceDecision','Kundaccept','data-p2-field',p.acceptanceDecision && (p.acceptanceDecision!=='accept' || canAcceptCustomer(p).allowed));
+  return items;
+}
+
+function phaseRequirements(section){
+  if(section.id==='kontakt') return phaseOneRequirements(phaseOne);
+  if(section.id==='kundkannedom') return phaseTwoRequirements(phaseTwo);
+  let index = 0;
+  return section.groups.flatMap(group=>group.items.map(item=>{
+    const current = index++;
+    return {key:typeof item==='string'?String(current):item.id, label:checklistItemText(item),
+      selector:`[data-section="${section.id}"][data-index="${current}"]`,
+      done:!!(state[section.id] && state[section.id][current]), visible:isChecklistItemVisible(item), blocked:checklistItemDisabled(item)};
+  })).filter(item=>item.visible);
+}
+
+function refreshRemainingTasks(){
+  SECTIONS.forEach(section=>{
+    const page = document.getElementById('page-'+section.id);
+    if(!page) return;
+    const items = phaseRequirements(section);
+    items.forEach(item=>{
+      const field = page.querySelector(item.selector);
+      if(!field) return;
+      const grouped = field.type==='radio' || field.hasAttribute('data-p1-service');
+      const target = grouped ? field.closest('.rule-options, .choice-row, .service-grid')
+        : field.closest('.field, .service-option, .item') || field;
+      if(!target.id) target.id = `question-${section.id}-${item.key.replace(/[^a-zA-Z0-9_-]/g,'-')}`;
+      item.targetId = target.id;
+      target.classList.add('remaining-target');
+      if(grouped){ target.setAttribute('role','group'); target.setAttribute('aria-label',item.label); }
+      if(!field.labels?.length && !field.hasAttribute('aria-label')) field.setAttribute('aria-label',item.label);
+      if(field.hasAttribute('data-section')){
+        field.disabled = item.blocked;
+        target.classList.toggle('is-disabled',item.blocked);
+        const note = target.querySelector('.item-note');
+        if(!item.blocked && note) note.remove();
+        if(item.blocked && !note) target.querySelector('.txt').insertAdjacentHTML('beforeend','<small class="item-note">Kräver godkänd kundaccept i Fas 2 och signerat uppdragsavtal i Fas 3.</small>');
+      }
+    });
+    const missing = items.filter(item=>!item.done);
+    const footerId = 'remaining-'+section.id;
+    let footer = page.querySelector('.remaining-tasks');
+    if(!footer){
+      footer = document.createElement('section'); footer.className = 'remaining-tasks';
+      footer.id = footerId; footer.tabIndex = -1; footer.setAttribute('aria-labelledby',footerId+'-title');
+      page.appendChild(footer);
+    }
+    footer.innerHTML = missing.length ? `<h3 id="${footerId}-title">Kvar att fylla i – ${missing.length} ${missing.length===1?'uppgift':'uppgifter'}</h3>
+      <ul>${missing.map(item=>`<li><a href="#${item.targetId}" data-remaining-link>${safe(item.label)}</a>${item.blocked?'<span class="remaining-note">Kan slutföras efter godkänd kundaccept och signerat uppdragsavtal.</span>':''}</li>`).join('')}</ul>`
+      : `<p id="${footerId}-title" class="remaining-complete">Alla obligatoriska uppgifter i fasen är ifyllda.</p>`;
+    let jump = page.querySelector('.remaining-jump');
+    if(!jump){ jump = document.createElement('p'); jump.className = 'remaining-jump'; page.querySelector('.progress-wrap').appendChild(jump); }
+    jump.hidden = !missing.length;
+    jump.innerHTML = missing.length ? `<a href="#${footerId}" data-remaining-link>${missing.length} ${missing.length===1?'uppgift återstår':'uppgifter återstår'} ↓</a>` : '';
+  });
+}
+
+let remainingHighlightTimer;
+function onRemainingTaskLink(event){
+  const link = event.target.closest('a[data-remaining-link]');
+  if(!link || !mainEl.contains(link)) return;
+  const target = document.getElementById(link.getAttribute('href').slice(1));
+  if(!target) return;
+  event.preventDefault();
+  for(let parent=target.parentElement; parent; parent=parent.parentElement){
+    if(parent.tagName==='DETAILS') parent.open = true;
+  }
+  const control = target.matches('input:not(:disabled), select:not(:disabled), textarea:not(:disabled)') ? target
+    : target.querySelector('input:not(:disabled), select:not(:disabled), textarea:not(:disabled)');
+  if(!control) target.tabIndex = -1;
+  (control || target).focus({preventScroll:true});
+
+// Skrolla endast huvudinnehållet och lämna lite luft ovanför frågan.
+const top =
+  mainEl.scrollTop +
+  target.getBoundingClientRect().top -
+  mainEl.getBoundingClientRect().top -
+  mainEl.clientTop -
+  24;
+
+mainEl.scrollTo({
+  top: Math.max(0, top),
+  behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? 'instant'
+    : 'smooth'
+});
+
+  mainEl.querySelectorAll('.remaining-highlight').forEach(el=>el.classList.remove('remaining-highlight'));
+  clearTimeout(remainingHighlightTimer);
+  target.classList.add('remaining-highlight');
+  remainingHighlightTimer = setTimeout(()=>target.classList.remove('remaining-highlight'),2500);
+}
 
 /* ============ APP STATE ============ */
 let customers = [];          // [{id, name, createdAt, lastTab}]
@@ -1381,6 +1523,10 @@ function renderCustomersPage(){
 const mainEl = document.getElementById('main');
 
 function renderMain(){
+  // Behåll fokus på samma fråga när ett svar uppdaterar de villkorade fälten.
+  const focused = document.activeElement;
+  const focusTargetId = mainEl.contains(focused) ? focused.closest('.remaining-target')?.id : null;
+  const focusValue = focused?.value;
   mainEl.innerHTML = "";
 
   if(view==='customers'){
@@ -1418,6 +1564,7 @@ function renderMain(){
     if(s.id===activeId) page.classList.add('active');
     mainEl.appendChild(page);
   });
+  refreshRemainingTasks();
   const summaryPage = renderSummaryPage();
   if(activeId==='summary') summaryPage.classList.add('active');
   mainEl.appendChild(summaryPage);
@@ -1427,6 +1574,13 @@ function renderMain(){
   });
   bindPhaseOneEvents();
   bindPhaseTwoEvents();
+  if(focusTargetId){
+    const target = document.getElementById(focusTargetId);
+    const controls = target ? [target,...target.querySelectorAll('input, select, textarea')]
+      .filter(el=>el.matches('input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')) : [];
+    const control = controls.find(el=>el.value===focusValue) || controls[0];
+    if(control) control.focus({preventScroll:true});
+  }
   mainEl.querySelectorAll('.sum-row').forEach(row=>{
     row.addEventListener('click', ()=> setActive(row.dataset.id));
   });
@@ -1448,12 +1602,15 @@ function refreshChecklistUI(){
       const pct = sectionPct(s);
       const c = sectionCounts(s);
       wrap.querySelector('.pct-num').textContent = pct+'%';
-      wrap.querySelector('.frac').textContent = c.total ? `${c.done} av ${c.total} punkter avklarade` : 'Inte aktuell för den här kunden';
+      wrap.querySelector('.frac').textContent = c.total ? `${c.done} av ${c.total} ${['kontakt','kundkannedom'].includes(s.id)?'uppgifter ifyllda':'punkter avklarade'}` : 'Inte aktuell för den här kunden';
       const fill = wrap.querySelector('.bar-fill');
       fill.style.width = pct+'%';
       fill.style.background = pctColor(pct);
     }
   });
+  refreshRemainingTasks();
+  const readyCard = document.querySelector('.start-ready-card');
+  if(readyCard) readyCard.outerHTML = renderSectionFooter(SECTIONS.find(s=>s.id==='uppfoljning'));
   const summaryPage = document.getElementById('page-summary');
   if(summaryPage){
     const op = overallPct();
@@ -1506,6 +1663,7 @@ function fullRender(){
 }
 
 /* ============ EVENTS ============ */
+mainEl.addEventListener('click', onRemainingTaskLink);
 clientBtn.addEventListener('click', ()=>{
   if(activeCustomerId) openCustomer(activeCustomerId);
   else goToCustomerList();
