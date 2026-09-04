@@ -311,7 +311,7 @@ function getAvailableKRules(p=phaseOne){
   if(p.companyType === 'ab'){
     return [
       {value:'K1', state:'disabled', disabled:true, note:'Ej tillämpligt för aktiebolag'},
-      {value:'K2', state: large.status === 'blocked' ? 'review' : 'possible', note: large.status === 'blocked' ? 'Kräver ytterligare bedömning utifrån företagets storlek och övriga förutsättningar' : 'Kan vara möjligt'},
+      {value:'K2', state: large.status === 'blocked' ? 'disabled' : 'possible', disabled:large.status === 'blocked', note: large.status === 'blocked' ? 'Ej tillämpligt för större företag' : 'Kan vara möjligt'},
       {value:'K3', state:'possible', note:'Kan vara möjligt'}
     ];
   }
