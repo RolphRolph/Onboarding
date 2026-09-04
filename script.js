@@ -239,6 +239,12 @@ function hasCompleteHistoricalData(p=phaseOne){
   return ['turnover','balance','employees'].every(k => hasRangeValue(k, p.latest[k]) && hasRangeValue(k, p.previous[k]));
 }
 
+function hasCompleteScopeData(p=phaseOne){
+  if(p.businessStatus === 'existing') return hasCompleteHistoricalData(p);
+  if(p.businessStatus === 'new') return ['turnover','balance','employees'].every(k => hasRangeValue(k, p.expected[k]));
+  return false;
+}
+
 function countExceeded(year, limits){
   return Object.keys(limits).reduce((count, key) => count + (rangeExceedsThreshold(key, year[key], limits[key]) === true ? 1 : 0), 0);
 }
@@ -312,6 +318,11 @@ function calculateK1Eligibility(p=phaseOne){
 }
 
 function getAvailableKRules(p=phaseOne){
+  if(!p.companyType) return [];
+  // K-regelverket kan väljas först när samtliga aktuella omfattningsintervall är angivna.
+  if(!hasCompleteScopeData(p)){
+    return ['K1','K2','K3'].map(value=>({value, state:'review', disabled:true, note:'Fyll i samtliga intervall ovan först'}));
+  }
   const large = calculateLargeCompanyStatus(p);
   if(p.companyType === 'ab'){
     return [
