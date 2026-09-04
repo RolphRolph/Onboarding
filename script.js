@@ -60,7 +60,6 @@ const SECTIONS = [
       {title:"Systemuppsättning", items:[
         {id:"baseSetup", text:"Grundinställningar och kontoplan är korrekt konfigurerade"},
         {id:"payrollSetup", text:"Lönesystem och relevanta lönebehörigheter är uppsatta", visibleWhen:"payroll"},
-        {id:"paymentFlows", text:"Nödvändiga bank-, faktura- och betalningsflöden är uppsatta", visibleWhen:"bookkeeping"},
         {id:"foreignSetup", text:"Relevant utlandsmoms/OSS eller annan utlandshantering är konfigurerad", visibleWhen:"foreign"},
         {id:"integrations", text:"Nödvändiga integrationer och specialfunktioner är aktiverade och testade"}
       ]},
@@ -105,14 +104,14 @@ const phaseOneKeyFor = (customerId) => PHASE1_KEY_PREFIX + customerId;
    utan att lagra eller visa påhittade exakta belopp. */
 const TURNOVER_RANGES = [
   {value:'turnover_upto_1m', label:'Upp till 1 mkr', minExclusive:null, max:1000000},
-  {value:'turnover_1m_3m', label:'1 mkr – 3 mkr', minExclusive:1000000, max:3000000},
-  {value:'turnover_3m_40m', label:'3 mkr – 40 mkr', minExclusive:3000000, max:40000000},
-  {value:'turnover_40m_80m', label:'40 mkr – 80 mkr', minExclusive:40000000, max:80000000},
+  {value:'turnover_1m_3m', label:'Över 1 mkr – 3 mkr', minExclusive:1000000, max:3000000},
+  {value:'turnover_3m_40m', label:'Över 3 mkr – 40 mkr', minExclusive:3000000, max:40000000},
+  {value:'turnover_40m_80m', label:'Över 40 mkr – 80 mkr', minExclusive:40000000, max:80000000},
   {value:'turnover_over_80m', label:'Över 80 mkr', minExclusive:80000000, max:null}
 ];
 const BALANCE_RANGES = [
   {value:'balance_upto_1_5m', label:'Upp till 1,5 mkr', minExclusive:null, max:1500000},
-  {value:'balance_1_5m_40m', label:'1,5 mkr – 40 mkr', minExclusive:1500000, max:40000000},
+  {value:'balance_1_5m_40m', label:'Över 1,5 mkr – 40 mkr', minExclusive:1500000, max:40000000},
   {value:'balance_over_40m', label:'Över 40 mkr', minExclusive:40000000, max:null}
 ];
 const EMPLOYEE_RANGES = [
@@ -465,9 +464,9 @@ function renderPhaseOnePage(){
     <h2>Företagsuppgifter och uppdragsprofil</h2>
     <div class="progress-wrap" id="progress-kontakt"><div class="progress-top"><span class="pct-num">${pct}%</span><span class="frac">${counts.done} av ${counts.total} uppgifter ifyllda</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pctColor(pct)}"></div></div></div>
 
-    <section class="phase-block"><div><h3>Företagsform <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('companyType','ab','Aktiebolag',phaseOne.companyType==='ab')}${radioCard('companyType','sole','Enskild näringsverksamhet',phaseOne.companyType==='sole')}</div></div></section>
+    <section class="phase-block"><div><h3>Företagsform</h3><div class="choice-row">${radioCard('companyType','ab','Aktiebolag',phaseOne.companyType==='ab')}${radioCard('companyType','sole','Enskild näringsverksamhet',phaseOne.companyType==='sole')}</div></div></section>
 
-    <section class="phase-block"><div><h3>Verksamhetens status <span class="required">Obligatoriskt</span></h3><div class="choice-row">${radioCard('businessStatus','new','Nystartad verksamhet',phaseOne.businessStatus==='new')}${radioCard('businessStatus','existing','Befintlig verksamhet',phaseOne.businessStatus==='existing')}</div>${phaseOne.businessStatus ? `<div class="info-box">ⓘ ${phaseOne.businessStatus==='existing'?'Hämta uppgifter från befintliga underlag där det är möjligt, exempelvis senaste årsredovisning eller bokslut.':'Historiska uppgifter saknas. Ange förväntad omfattning om uppgifterna behövs för bedömningen.'}</div>`:''}</div></section>
+    <section class="phase-block"><div><h3>Verksamhetens status</h3><div class="choice-row">${radioCard('businessStatus','new','Nystartad verksamhet',phaseOne.businessStatus==='new')}${radioCard('businessStatus','existing','Befintlig verksamhet',phaseOne.businessStatus==='existing')}</div>${phaseOne.businessStatus ? `<div class="info-box">ⓘ ${phaseOne.businessStatus==='existing'?'Hämta uppgifter från befintliga underlag där det är möjligt, exempelvis senaste årsredovisning eller bokslut.':'Historiska uppgifter saknas. Ange förväntad omfattning om uppgifterna behövs för bedömningen.'}</div>`:''}</div></section>
 
     <section class="phase-block"><div><h3>Vilka tjänster ska byrån utföra? <span class="required">Minst ett val</span></h3><div class="service-grid">${services.map(([v,l])=>`<label class="service-option"><input type="checkbox" data-p1-service="${v}" ${phaseOne.services.includes(v)?'checked':''}><span class="native-box"></span><span>${l}</span></label>`).join('')}</div>${phaseOne.services.includes('other')?renderOtherServices():''}</div></section>
 
@@ -1274,7 +1273,6 @@ function isChecklistItemVisible(item, p1=phaseOne){
     case 'existing': return p1.businessStatus === 'existing';
     case 'previousFirm': return p1.businessStatus === 'existing' && p1.previousFirm === 'yes';
     case 'payroll': return p1.services.includes('payroll');
-    case 'bookkeeping': return p1.services.includes('bookkeeping');
     case 'foreign': return p1.foreignActivity === 'yes';
     default: return true;
   }
@@ -1306,6 +1304,8 @@ function ensureState(s){
     s.system.splice(10, 3);
     s.system.splice(4, 1);
   }
+  // Betalningsflöden låg på position 5 i den tidigare checklistan för Fas 5.
+  if(Array.isArray(s.system) && s.system.length === 9) s.system.splice(5, 1);
   SECTIONS.forEach(sec=>{
     const n = flatCount(sec);
     if(!Array.isArray(s[sec.id]) || s[sec.id].length!==n){
@@ -1594,7 +1594,7 @@ function selectedServiceNames(labels={bookkeeping:'Bokföring',vat:'Moms',payrol
 function renderSectionContext(section){
   const services = selectedServiceNames();
   if(section.id === 'avtal'){
-    return `<div class="section-context"><strong>Uppdrag från Fas 1</strong><div class="context-chips">${services.length ? services.map(x=>`<span>${safe(x)}</span>`).join('') : '<span>Inga tjänster valda ännu</span>'}</div></div>`;
+    return `<div class="section-context"><strong>Uppdrag från Fas 1</strong><div class="context-chips">${services.length ? services.map(x=>`<span>${safe(x)}</span>`).join('') : '<span>Inga tjänster valda ännu</span>'}</div><p>Detaljer om ansvar och rutiner behöver bara omfatta de tjänster som faktiskt ingår i uppdraget.</p></div>`;
   }
   if(section.id === 'overtag'){
     if(!phaseOne.businessStatus) return `<div class="info-box">ⓘ Välj nystartad eller befintlig verksamhet i Fas 1 för att anpassa den här fasen.</div>`;
@@ -1609,7 +1609,6 @@ function renderSectionContext(section){
   if(section.id === 'system'){
     const details = [];
     if(phaseOne.services.includes('payroll')) details.push('lön');
-    if(phaseOne.services.includes('bookkeeping')) details.push('bank/fakturaflöden');
     if(phaseOne.foreignActivity === 'yes') details.push('utlandshantering');
     return `<div class="section-context"><strong>Systemdelen är filtrerad utifrån kunden</strong><p>${details.length ? `Fokus just nu: ${safe(details.join(', '))}.` : 'Fyll i uppdragsprofilen i Fas 1 för mer specifik filtrering.'} Övriga kundspecifika integrationer hanteras bara när de faktiskt används.</p></div>`;
   }
