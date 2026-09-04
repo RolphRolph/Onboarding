@@ -336,7 +336,7 @@ function getAvailableKRules(p=phaseOne){
     return [
       {value:'K1', state:k1.status, disabled:k1.status === 'blocked', note:k1.status === 'possible' ? k1.label : `${k1.label}. ${k1.detail}`},
       {value:'K2', state: large.status === 'blocked' ? 'disabled' : 'possible', disabled:large.status === 'blocked', note: large.status === 'blocked' ? 'Ej tillämpligt för större företag' : 'Kan vara möjligt'},
-      {value:'K3', state:'review', note:'Kräver bedömning av tillämplighet'}
+      {value:'K3', state:'possible', note:'Kan vara möjligt'}
     ];
   }
   return [];
@@ -747,8 +747,6 @@ function phaseOneContextForKyc(){
 }
 
 function renderPhaseTwoPage(){
-  // Förifyll en gång när Fas 2 används; manuellt ändrade eller raderade datum skrivs aldrig över.
-  if(initializeIdentityDate()) savePhaseTwo();
   const page = document.createElement('div');
   page.className = 'page';
   page.id = 'page-kundkannedom';
@@ -872,6 +870,7 @@ function bindPhaseTwoEvents(){
 
   page.querySelectorAll('[data-p2-check]').forEach(el=>el.addEventListener('change', ()=>{
     phaseTwo[el.dataset.p2Check] = el.checked;
+    if(el.dataset.p2Check==='identityVerified' && el.checked) initializeIdentityDate();
     savePhaseTwo(); renderMain(); renderSidebar();
   }));
 
