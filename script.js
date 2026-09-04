@@ -105,14 +105,14 @@ const phaseOneKeyFor = (customerId) => PHASE1_KEY_PREFIX + customerId;
    utan att lagra eller visa påhittade exakta belopp. */
 const TURNOVER_RANGES = [
   {value:'turnover_upto_1m', label:'Upp till 1 mkr', minExclusive:null, max:1000000},
-  {value:'turnover_1m_3m', label:'Över 1 mkr – 3 mkr', minExclusive:1000000, max:3000000},
-  {value:'turnover_3m_40m', label:'Över 3 mkr – 40 mkr', minExclusive:3000000, max:40000000},
-  {value:'turnover_40m_80m', label:'Över 40 mkr – 80 mkr', minExclusive:40000000, max:80000000},
+  {value:'turnover_1m_3m', label:'1 mkr – 3 mkr', minExclusive:1000000, max:3000000},
+  {value:'turnover_3m_40m', label:'3 mkr – 40 mkr', minExclusive:3000000, max:40000000},
+  {value:'turnover_40m_80m', label:'40 mkr – 80 mkr', minExclusive:40000000, max:80000000},
   {value:'turnover_over_80m', label:'Över 80 mkr', minExclusive:80000000, max:null}
 ];
 const BALANCE_RANGES = [
   {value:'balance_upto_1_5m', label:'Upp till 1,5 mkr', minExclusive:null, max:1500000},
-  {value:'balance_1_5m_40m', label:'Över 1,5 mkr – 40 mkr', minExclusive:1500000, max:40000000},
+  {value:'balance_1_5m_40m', label:'1,5 mkr – 40 mkr', minExclusive:1500000, max:40000000},
   {value:'balance_over_40m', label:'Över 40 mkr', minExclusive:40000000, max:null}
 ];
 const EMPLOYEE_RANGES = [
@@ -455,7 +455,7 @@ function renderPhaseOnePage(){
   const accountingOptions = accounting.options.map(o => `<label class="rule-option ${o.disabled?'is-disabled':''}"><input type="radio" name="accountingMethod" data-p1-choice="accountingMethod" value="${o.value}" ${phaseOne.choices.accountingMethod===o.value?'checked':''} ${o.disabled?'disabled':''}><span><strong>${o.label}</strong></span></label>`).join('');
   const vatOptions = vat.options.map(o => `<label class="rule-option ${o.disabled?'is-disabled':''}"><input type="radio" name="vatPeriod" data-p1-choice="vatPeriod" value="${o.value}" ${phaseOne.choices.vatPeriod===o.value?'checked':''} ${o.disabled?'disabled':''}><span><strong>${o.label}</strong></span></label>`).join('');
 
-  const selectedServices = services.filter(([v])=>phaseOne.services.includes(v)).map(([,l])=>l).join(', ') || '–';
+  const selectedServices = selectedServiceNames(Object.fromEntries(services)).join(', ') || '–';
   const kAvailable = kRules.filter(r=>r.state!=='disabled' && !r.disabled).map(r=>r.value).join(' / ') || '–';
   const methodAvailable = accounting.options.filter(o=>!o.disabled).map(o=>o.label).join(' / ') || '–';
   const vatAvailable = vat.visible ? (vat.options.filter(o=>!o.disabled).map(o=>o.label).join(' / ') || 'Kan inte bedömas ännu') : 'Inte aktuellt';
@@ -1582,16 +1582,19 @@ function checklistItemDisabled(item){
   return false;
 }
 
-function selectedServiceNames(){
-  const labels = {bookkeeping:'Bokföring',vat:'Moms',payroll:'Lön/AGI',annual:'Bokslut/årsredovisning',tax:'Inkomstdeklaration',other:'Annat'};
-  return phaseOne.services.map(v=>labels[v] || v);
+function selectedServiceNames(labels={bookkeeping:'Bokföring',vat:'Moms',payroll:'Lön/AGI',annual:'Bokslut/årsredovisning',tax:'Inkomstdeklaration',other:'Annat'}){
+  return phaseOne.services.flatMap(v=>{
+    if(v!=='other') return [labels[v] || v];
+    const otherServices = phaseOne.otherServices.map(text=>text.trim()).filter(Boolean);
+    return otherServices.length ? otherServices : [labels.other];
+  });
 }
 
 /* Kort kontext från tidigare faser. Det är information, inte fler frågor. */
 function renderSectionContext(section){
   const services = selectedServiceNames();
   if(section.id === 'avtal'){
-    return `<div class="section-context"><strong>Uppdrag från Fas 1</strong><div class="context-chips">${services.length ? services.map(x=>`<span>${safe(x)}</span>`).join('') : '<span>Inga tjänster valda ännu</span>'}</div><p>Detaljer om ansvar och rutiner behöver bara omfatta de tjänster som faktiskt ingår i uppdraget.</p></div>`;
+    return `<div class="section-context"><strong>Uppdrag från Fas 1</strong><div class="context-chips">${services.length ? services.map(x=>`<span>${safe(x)}</span>`).join('') : '<span>Inga tjänster valda ännu</span>'}</div></div>`;
   }
   if(section.id === 'overtag'){
     if(!phaseOne.businessStatus) return `<div class="info-box">ⓘ Välj nystartad eller befintlig verksamhet i Fas 1 för att anpassa den här fasen.</div>`;
