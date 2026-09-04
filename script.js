@@ -261,7 +261,7 @@ function calculateAuditRequirement(){
 }
 
 function calculateLargeCompanyStatus(p=phaseOne){
-  if(p.companyType !== 'ab') return {status:'na', label:'Inte aktuellt', detail:'Storleksstödet visas här för aktiebolag.'};
+  if(!['ab','sole'].includes(p.companyType)) return {status:'na', label:'Inte aktuellt', detail:'Välj företagsform för att få storleksstöd.'};
   if(p.businessStatus !== 'existing' || !hasCompleteHistoricalData(p)){
     return {status:'review', label:'Kan inte slutligt bedömas', detail:'Två kompletta historiska räkenskapsår krävs för den automatiska tvåårsbedömningen.'};
   }
@@ -324,7 +324,7 @@ function getAvailableKRules(p=phaseOne){
     const k1 = calculateK1Eligibility(p);
     return [
       {value:'K1', state:k1.status, disabled:k1.status === 'blocked', note:k1.status === 'possible' ? k1.label : `${k1.label}. ${k1.detail}`},
-      {value:'K2', state:'review', note:'Kräver bedömning av tillämplighet'},
+      {value:'K2', state: large.status === 'blocked' ? 'disabled' : 'possible', disabled:large.status === 'blocked', note: large.status === 'blocked' ? 'Ej tillämpligt för större företag' : 'Kan vara möjligt'},
       {value:'K3', state:'review', note:'Kräver bedömning av tillämplighet'}
     ];
   }
