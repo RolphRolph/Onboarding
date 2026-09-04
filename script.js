@@ -104,14 +104,14 @@ const phaseOneKeyFor = (customerId) => PHASE1_KEY_PREFIX + customerId;
    utan att lagra eller visa påhittade exakta belopp. */
 const TURNOVER_RANGES = [
   {value:'turnover_upto_1m', label:'Upp till 1 mkr', minExclusive:null, max:1000000},
-  {value:'turnover_1m_3m', label:'Över 1 mkr – 3 mkr', minExclusive:1000000, max:3000000},
-  {value:'turnover_3m_40m', label:'Över 3 mkr – 40 mkr', minExclusive:3000000, max:40000000},
-  {value:'turnover_40m_80m', label:'Över 40 mkr – 80 mkr', minExclusive:40000000, max:80000000},
+  {value:'turnover_1m_3m', label:'1 mkr – 3 mkr', minExclusive:1000000, max:3000000},
+  {value:'turnover_3m_40m', label:'3 mkr – 40 mkr', minExclusive:3000000, max:40000000},
+  {value:'turnover_40m_80m', label:'40 mkr – 80 mkr', minExclusive:40000000, max:80000000},
   {value:'turnover_over_80m', label:'Över 80 mkr', minExclusive:80000000, max:null}
 ];
 const BALANCE_RANGES = [
   {value:'balance_upto_1_5m', label:'Upp till 1,5 mkr', minExclusive:null, max:1500000},
-  {value:'balance_1_5m_40m', label:'Över 1,5 mkr – 40 mkr', minExclusive:1500000, max:40000000},
+  {value:'balance_1_5m_40m', label:'1,5 mkr – 40 mkr', minExclusive:1500000, max:40000000},
   {value:'balance_over_40m', label:'Över 40 mkr', minExclusive:40000000, max:null}
 ];
 const EMPLOYEE_RANGES = [
@@ -268,11 +268,16 @@ function calculateLargeCompanyStatus(p=phaseOne){
   const limits = {turnover:80000000, balance:40000000, employees:50};
   const a = countExceeded(p.latest, limits);
   const b = countExceeded(p.previous, limits);
-  const large = a >= 2 && b >= 2;
+  // Minst samma två gränsvärden måste vara överskridna under båda åren.
+  const consistentlyExceeded = Object.keys(limits).filter(key =>
+    rangeExceedsThreshold(key, p.latest[key], limits[key]) === true &&
+    rangeExceedsThreshold(key, p.previous[key], limits[key]) === true
+  ).length;
+  const large = consistentlyExceeded >= 2;
   return {
     status: large ? 'blocked' : 'possible',
     label: large ? 'Företaget uppfyller storlekskriterierna för större företag' : 'Företaget uppfyller inte storlekskriterierna för större företag',
-    detail: `Senaste året: ${a} av 3 gränsvärden överskridna. Föregående året: ${b} av 3. Detta är stöd för K-regelverksvalet.`
+    detail: `Senaste året: ${a} av 3 gränsvärden överskridna. Föregående året: ${b} av 3. Samma gränsvärden båda åren: ${consistentlyExceeded} av 3. Detta är stöd för K-regelverksvalet.`
   };
 }
 
@@ -731,6 +736,8 @@ function phaseOneContextForKyc(){
 }
 
 function renderPhaseTwoPage(){
+  // Förifyll en gång när Fas 2 används; manuellt ändrade eller raderade datum skrivs aldrig över.
+  if(initializeIdentityDate()) savePhaseTwo();
   const page = document.createElement('div');
   page.className = 'page';
   page.id = 'page-kundkannedom';
